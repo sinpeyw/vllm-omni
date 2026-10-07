@@ -46,7 +46,7 @@ NeMo modules (`nemo_vendored/`), so no `nemo_toolkit` install is needed.
 ## Pipeline
 
 | stage | arch | dtype | role |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 0 thinker | `NemotronVoiceChatThinkerForConditionalGeneration` (LLM_AR) | bf16 (PARITY: fp32) | WAV + system prompt -> frame-locked text-token timeline (+ function channel) |
 | 1 talker | `NemotronVoiceChatTalker` (LLM_AR) | fp32 | text timeline -> 31-quantizer RVQ code stacks (one per 80 ms frame) |
 | 2 code2wav | `NemotronVoiceChatCode2Wav` (LLM_GENERATION) | fp32 | RVQ-VAE decode -> 22.05 kHz PCM |
@@ -197,6 +197,54 @@ after the final commit" is timing-sensitive — a faster pipeline can legitimate
 complete every turn before the commit lands (use
 `--allow-incomplete-response` when measuring latency rather than protocol
 completion).
+
+#### Experimental duplex perception batching
+
+The thinker can batch cache-aware audio perception for compatible requests
+in the same engine step. Enable the experimental hook with the stage-0
+Hugging Face config override `batch_duplex_perception: true`, for example:
+
+```bash
+vllm-omni serve /path/to/NVIDIA-NemotronLabs-VoiceChat-11B \
+  --omni \
+  --served-model-name nemotron-voicechat \
+  --deploy-config vllm_omni/deploy/nemotron_labs_voicechat_duplex.yaml \
+  --stage-overrides '{"0":{"hf_overrides":{"batch_duplex_perception":true}}}'
+```
+
+The hook is disabled by default. It batches equal-length waveform windows
+without padding, groups encoder chunks by width and stream-start drop count,
+and stores independent per-request caches. Scalar preprocessing still owns
+prompt fusion and function-token feedback. Replayed appends reuse the existing
+acoustic embedding.
+
+This override does not increase session admission or stage capacity. The
+shipped duplex profile remains a single-session deployment. Component
+speedups do not establish end-to-end realtime capacity or same-replica
+multi-session support. BF16 batch shapes can change rounding over successive
+streaming steps; validate output quality before using an experimental
+multi-session profile.
+
+The standalone benchmark loads only the local perception weights and uses
+real speech. Supply the original singleton thinker source from a separate
+checkout of the base revision as an independent reference:
+
+```bash
+python benchmarks/nemotron_voicechat/validate_perception_batch.py \
+  --model /path/to/NVIDIA-NemotronLabs-VoiceChat-11B \
+  --audio /path/to/NVIDIA-NemotronLabs-VoiceChat-11B/turn_taking.wav \
+  --reference-source /path/to/base-checkout/vllm_omni/model_executor/models/nemotron_voicechat/nemotron_voicechat_thinker.py \
+  --dtype float32 --batches 1 2 4 8 --steps 96 --warmup 16 --repeats 2 \
+  --output results/perception-fp32.json
+```
+
+Repeat with `--dtype bfloat16` and a new output path to measure reduced-precision
+drift. The benchmark reports synchronized whole-batch latency, variability,
+peak allocated memory, and cache/embedding error against the singleton
+reference. It also checks pause, replay, row reordering, request reopening,
+and stream isolation. A nonzero exit code means the numerical comparison
+exceeded the benchmark's conservative relative-L2 threshold; it is not an
+automatic speech-quality verdict.
 
 #### Duplex performance profile
 
