@@ -46,7 +46,7 @@ NeMo modules (`nemo_vendored/`), so no `nemo_toolkit` install is needed.
 ## Pipeline
 
 | stage | arch | dtype | role |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 0 thinker | `NemotronVoiceChatThinkerForConditionalGeneration` (LLM_AR) | bf16 (PARITY: fp32) | WAV + system prompt -> frame-locked text-token timeline (+ function channel) |
 | 1 talker | `NemotronVoiceChatTalker` (LLM_AR) | fp32 | text timeline -> 31-quantizer RVQ code stacks (one per 80 ms frame) |
 | 2 code2wav | `NemotronVoiceChatCode2Wav` (LLM_GENERATION) | fp32 | RVQ-VAE decode -> 22.05 kHz PCM |
@@ -197,6 +197,16 @@ after the final commit" is timing-sensitive — a faster pipeline can legitimate
 complete every turn before the commit lands (use
 `--allow-incomplete-response` when measuring latency rather than protocol
 completion).
+
+#### Experimental duplex perception batching
+
+To batch compatible audio frames in the same thinker step, append this stage-0 override to the duplex serving command:
+
+```bash
+--stage-overrides '{"0":{"hf_overrides":{"batch_duplex_perception":true}}}'
+```
+
+Disabled by default; session admission is unchanged. Waveform windows are grouped by length, and encoder chunks by width and stream-start drop count. Each request retains its own caches.
 
 #### Duplex performance profile
 
