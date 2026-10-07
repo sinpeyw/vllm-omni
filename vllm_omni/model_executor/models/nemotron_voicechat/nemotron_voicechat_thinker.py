@@ -318,7 +318,6 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         streaming_preprocessor_cfg.dither = 0.0
         streaming_preprocessor_cfg.pad_to = 0
         self._streaming_preprocessor = self.perception.from_config_dict(streaming_preprocessor_cfg)
-        self._batch_duplex_perception = bool(getattr(config, "batch_duplex_perception", False))
 
         # AddFusion weights (the checkpoint uses fuse_method="add" defaults;
         # the same duplex_*_weight keys double as the fusion weights).
@@ -545,8 +544,6 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         device: torch.device,
     ) -> None:
         """Prepare new duplex acoustic frames before the runner's scalar fusion."""
-        if not self._batch_duplex_perception:
-            return
         entries = []
         for request_id in req_ids:
             info = model_intermediate_buffer.get(request_id)

@@ -35,7 +35,6 @@ def thinker():
         )
         nn.Module.__init__(model)
         model._dtype = torch.float32
-        model._batch_duplex_perception = True
         model._hidden = 16
         model._sessions = {}
         model._duplex_previous_text_tokens = {}
@@ -244,11 +243,7 @@ def test_nonduplex_requests_are_not_batched(thinker):
     assert thinker._sessions["a"] == before
 
 
-def test_batch_hook_requires_explicit_opt_in(thinker):
-    thinker._batch_duplex_perception = False
-    thinker.preprocess_batch(req_ids=["a"], model_intermediate_buffer={"a": {"duplex": append(0, 1)}}, device=DEVICE)
-    assert not thinker._sessions
-    # Scalar duplex preprocessing remains available with the hook disabled.
+def test_scalar_preprocessing_works_without_batch_hook(thinker):
     _, embeds, _ = thinker._preprocess_duplex(
         request_id="a", input_ids=torch.zeros(3, dtype=torch.long), info={}, duplex=append(0, 1)
     )

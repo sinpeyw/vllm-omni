@@ -198,15 +198,9 @@ complete every turn before the commit lands (use
 `--allow-incomplete-response` when measuring latency rather than protocol
 completion).
 
-#### Experimental duplex perception batching
+#### Duplex perception batching
 
-To batch compatible audio frames in the same thinker step, append this stage-0 override to the duplex serving command:
-
-```bash
---stage-overrides '{"0":{"hf_overrides":{"batch_duplex_perception":true}}}'
-```
-
-Disabled by default; session admission is unchanged. Waveform windows are grouped by length, and encoder chunks by width and stream-start drop count. Each request retains its own caches.
+Compatible audio frames in the same thinker step are batched automatically. Waveform windows are grouped by length, and encoder chunks by width and stream-start drop count. Each request retains its own caches. Session admission limits are unchanged.
 
 #### Duplex performance profile
 
