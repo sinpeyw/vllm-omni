@@ -31,6 +31,7 @@ from scipy.signal import resample_poly
 from torch import nn
 from vllm.platforms import current_platform
 
+from benchmarks.nemotron_voicechat.checkpoint_metadata import checkpoint_identity
 from vllm_omni.model_executor.models.nemotron_voicechat import nemotron_voicechat_thinker as thinker_module
 from vllm_omni.model_executor.models.nemotron_voicechat.nemo_vendored.perception import AudioPerceptionModule
 
@@ -260,7 +261,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=2)
     args = parser.parse_args()
     if args.output.exists():
-        raise FileExistsError(f"Select a new output path: {args.output}")
+        parser.error(f"Select a new output path: {args.output}")
     if not 0 <= args.warmup < args.steps or any(batch <= 0 for batch in args.batches) or args.repeats <= 0:
         parser.error("Require positive batches/repeats and 0 <= warmup < steps")
     torch.set_num_threads(4)
@@ -270,6 +271,7 @@ def main():
         torch.set_float32_matmul_precision("highest")
         torch.backends.cudnn.allow_tf32 = False
     device = torch.device(args.device)
+    model_identity = checkpoint_identity(args.model)
     model, weights = load_perception(args.model, device, getattr(torch, args.dtype))
     reference, reference_hash = load_reference(args.reference_source)
     audio = load_audio(args.audio)
@@ -289,6 +291,7 @@ def main():
     result = {
         "passed": passed,
         "model": str(args.model),
+        "checkpoint_identity": model_identity,
         "audio": str(args.audio),
         "audio_sha256": hashlib.sha256(args.audio.read_bytes()).hexdigest(),
         "dtype": args.dtype,
@@ -318,7 +321,7 @@ def main():
         out.write("\n")
     print(f"passed={passed}; results={args.output}", flush=True)
     if not passed:
-        raise SystemExit(1)
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

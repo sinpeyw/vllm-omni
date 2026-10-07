@@ -297,6 +297,13 @@ From highest to lowest:
 4. Overlay YAML (via `base_config:`) on top of the base YAML
 5. Parser defaults
 
+Model-specific configuration can also be set through a stage's `hf_overrides`.
+For example, VoiceChat's experimental duplex perception batching is enabled
+with `--stage-overrides '{"0":{"hf_overrides":{"batch_duplex_perception":true}}}'`.
+It defaults to disabled and does not increase session admission. See the
+[VoiceChat recipe](../../recipes/NVIDIA/NemotronLabs-VoiceChat.md#experimental-duplex-perception-batching)
+for its validation limits and reproduction tools.
+
 ### Worked override example
 
 Starting from the bundled `vllm_omni/deploy/qwen3_omni_moe.yaml`:

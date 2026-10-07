@@ -1,0 +1,27 @@
+# Experimental validation profile; no production capacity/support claim.
+base_config: ../../../vllm_omni/deploy/nemotron_labs_voicechat_duplex.yaml
+active_stream_window: 4
+duplex_session:
+  # This mapping replaces the inherited one; preserve all shipped settings.
+  idle_ttl_s: 300
+  disconnect_grace_s: 30
+  reaper_interval_s: 5
+  resume_replay_ttl_s: 60
+  resume_replay_max_bytes_per_session: 8388608
+  max_pending_input_bytes_per_session: 16777216
+  max_pending_turns_per_session: 4
+  max_sessions: 4
+  completed_append_cache_size: 256
+  warmup_frames: 2
+stages:
+  - stage_id: 0
+    max_num_seqs: 4
+    max_model_len: 4096
+    enforce_eager: true
+  - stage_id: 1
+    max_num_seqs: 4
+    max_model_len: 4096
+    enforce_eager: true
+  - stage_id: 2
+    max_num_seqs: 4
+    enforce_eager: true

@@ -619,14 +619,16 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         for (_, drop), group in encoder_groups.items():
             frames, chunks = zip(*group)
             # NeMo caches are [layers, batch, ...]; their valid lengths are [batch].
-            caches = tuple(torch.cat([frame.caches[i] for frame in frames], dim=1 if i < 2 else 0) for i in range(3))
+            cache_channel = torch.cat([frame.caches[0] for frame in frames], dim=1)
+            cache_time = torch.cat([frame.caches[1] for frame in frames], dim=1)
+            cache_channel_len = torch.cat([frame.caches[2] for frame in frames], dim=0)
             mel = torch.cat(chunks, dim=0).to(next(encoder.parameters()).dtype)
             encoded, encoded_len, channel, time, channel_len = encoder.cache_aware_stream_step(
                 processed_signal=mel,
                 processed_signal_length=torch.full((len(frames),), mel.shape[-1], device=device, dtype=torch.long),
-                cache_last_channel=caches[0],
-                cache_last_time=caches[1],
-                cache_last_channel_len=caches[2],
+                cache_last_channel=cache_channel,
+                cache_last_time=cache_time,
+                cache_last_channel_len=cache_channel_len,
                 keep_all_outputs=True,
                 drop_extra_pre_encoded=drop,
             )

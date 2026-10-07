@@ -225,26 +225,13 @@ multi-session support. BF16 batch shapes can change rounding over successive
 streaming steps; validate output quality before using an experimental
 multi-session profile.
 
-The standalone benchmark loads only the local perception weights and uses
-real speech. Supply the original singleton thinker source from a separate
-checkout of the base revision as an independent reference:
-
-```bash
-python benchmarks/nemotron_voicechat/validate_perception_batch.py \
-  --model /path/to/NVIDIA-NemotronLabs-VoiceChat-11B \
-  --audio /path/to/NVIDIA-NemotronLabs-VoiceChat-11B/turn_taking.wav \
-  --reference-source /path/to/base-checkout/vllm_omni/model_executor/models/nemotron_voicechat/nemotron_voicechat_thinker.py \
-  --dtype float32 --batches 1 2 4 8 --steps 96 --warmup 16 --repeats 2 \
-  --output results/perception-fp32.json
-```
-
-Repeat with `--dtype bfloat16` and a new output path to measure reduced-precision
-drift. The benchmark reports synchronized whole-batch latency, variability,
-peak allocated memory, and cache/embedding error against the singleton
-reference. It also checks pause, replay, row reordering, request reopening,
-and stream isolation. A nonzero exit code means the numerical comparison
-exceeded the benchmark's conservative relative-L2 threshold; it is not an
-automatic speech-quality verdict.
+The [validation guide](../../benchmarks/nemotron_voicechat/README.md) provides
+component A/B commands, an experimental four-session eager profile, a native
+service probe, and recorded results. The component benchmark records local
+checkpoint provenance and checks cache/embedding error against the original
+singleton source. Exit code `3` means its numerical threshold was exceeded;
+`1` means a runtime failure and `2` means a CLI/argument error. Numerical drift
+alone does not establish a speech-quality regression.
 
 #### Duplex performance profile
 

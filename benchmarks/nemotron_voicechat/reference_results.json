@@ -1,0 +1,1038 @@
+{
+  "measurement_commit": "72063750f2f4bbfdcc618ecfdf99b757418182ac",
+  "upstream_base": "d5a3380103df2fc827f095c60dbfb6e1c5655fd3",
+  "checkpoint": "nvidia/NVIDIA-NemotronLabs-VoiceChat-11B",
+  "checkpoint_identity_at_run": null,
+  "provenance_note": "Original runs did not capture checkpoint revision/config SHA256; later tooling adds these fields. Historical measurements are not reruns of that tooling.",
+  "component": {
+    "fp32": {
+      "passed": true,
+      "audio_sha256": "9602d5f78799644964b631e632c5740c325d518847cbb1ffb8917dee7abd17c1",
+      "dtype": "float32",
+      "gpu": "NVIDIA A800-SXM4-80GB",
+      "torch_version": "2.13.0+cu129",
+      "vllm_version": "0.31.0",
+      "vllm_omni_version": "0.31.0",
+      "implementation_sha256": "44abad73b2a5da294147b000ebb34c11b7624a926457acbc36435aac2374f624",
+      "reference_sha256": "1039f59dfd989749d824275d47312104cd56c55e4df9fbfd409309fad4f7d3e6",
+      "steps": 96,
+      "warmup": 16,
+      "repeats": 2,
+      "weights": {
+        "loaded_tensors": 640,
+        "strict_load": true
+      },
+      "timing_scope": "synchronized whole-batch wall time; PCM/mel/Conformer/projection/cache commit",
+      "memory_scope": "peak allocated per step; both A/B state sets retained; reset before each timed call",
+      "relative_l2_limit": 0.0001,
+      "float32_matmul_precision": "highest",
+      "cudnn_allow_tf32": false,
+      "lifecycle": {
+        "independent_rows_bitwise_equal": true,
+        "pause_replay_reorder_reopen_passed": true,
+        "errors": {
+          "duplex_frame": {
+            "max_abs": 2.7194619178771973e-07,
+            "max_relative_l2": 2.2577396521228366e-06
+          },
+          "perception_cache_last_channel": {
+            "max_abs": 5.960464477539062e-07,
+            "max_relative_l2": 5.72192163872387e-07
+          },
+          "perception_cache_last_time": {
+            "max_abs": 8.487701416015625e-05,
+            "max_relative_l2": 6.162870818116062e-07
+          }
+        }
+      },
+      "batches": [
+        {
+          "batch": 1,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 29.5742857375,
+            "p50_ms": 29.4407505,
+            "p95_ms": 30.326789,
+            "stddev_ms": 0.5534277125688308,
+            "min_ms": 28.976393,
+            "max_ms": 32.486151
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 29.76797185,
+            "p50_ms": 29.6191075,
+            "p95_ms": 30.470208,
+            "stddev_ms": 0.5749146264465076,
+            "min_ms": 29.163539,
+            "max_ms": 32.707221
+          },
+          "speedup_mean": 0.9934934730025956,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_time": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2538298880,
+            "batched_peak_allocated_bytes": 2547621888,
+            "serial_peak_step_extra_bytes": 15637504,
+            "batched_peak_step_extra_bytes": 24960512
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 2,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 58.54974986249999,
+            "p50_ms": 58.3765605,
+            "p95_ms": 59.057205,
+            "stddev_ms": 0.6454280637046381,
+            "min_ms": 58.05786,
+            "max_ms": 62.723817
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 30.898267637500005,
+            "p50_ms": 30.757469,
+            "p95_ms": 31.422134,
+            "stddev_ms": 0.6618269357145462,
+            "min_ms": 30.455738,
+            "max_ms": 35.583055
+          },
+          "speedup_mean": 1.8949201472849073,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 3.2782554626464844e-07,
+              "max_relative_l2": 2.547721351220389e-06
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 4.76837158203125e-07,
+              "max_relative_l2": 5.12772260208294e-07
+            },
+            "perception_cache_last_time": {
+              "max_abs": 6.103515625e-05,
+              "max_relative_l2": 5.747611453443824e-07
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2554639872,
+            "batched_peak_allocated_bytes": 2587371008,
+            "serial_peak_step_extra_bytes": 15637504,
+            "batched_peak_step_extra_bytes": 48368640
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 4,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 117.414390725,
+            "p50_ms": 117.340641,
+            "p95_ms": 118.922873,
+            "stddev_ms": 0.8724062075957075,
+            "min_ms": 116.027046,
+            "max_ms": 119.929944
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 31.368978487499998,
+            "p50_ms": 31.2869845,
+            "p95_ms": 32.045149,
+            "stddev_ms": 0.4985535954497521,
+            "min_ms": 30.853201,
+            "max_ms": 34.913395
+          },
+          "speedup_mean": 3.743009698954259,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 2.682209014892578e-07,
+              "max_relative_l2": 1.7865580730358488e-06
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 8.195638656616211e-07,
+              "max_relative_l2": 5.812124754811521e-07
+            },
+            "perception_cache_last_time": {
+              "max_abs": 6.29425048828125e-05,
+              "max_relative_l2": 6.241054961719783e-07
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2585224704,
+            "batched_peak_allocated_bytes": 2664083968,
+            "serial_peak_step_extra_bytes": 14720000,
+            "batched_peak_step_extra_bytes": 93906944
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 8,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 235.4225352875,
+            "p50_ms": 234.73369200000002,
+            "p95_ms": 240.766779,
+            "stddev_ms": 2.581119010431702,
+            "min_ms": 232.38088,
+            "max_ms": 246.069922
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.4371953,
+            "p50_ms": 32.302045,
+            "p95_ms": 33.504458,
+            "stddev_ms": 0.5075633799281227,
+            "min_ms": 31.863622,
+            "max_ms": 34.161875
+          },
+          "speedup_mean": 7.257795660511377,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 3.5762786865234375e-07,
+              "max_relative_l2": 2.517408347557648e-06
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 8.810311555862427e-07,
+              "max_relative_l2": 6.572884103661636e-07
+            },
+            "perception_cache_last_time": {
+              "max_abs": 6.389617919921875e-05,
+              "max_relative_l2": 6.711304081363778e-07
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2648163840,
+            "batched_peak_allocated_bytes": 2820557312,
+            "serial_peak_step_extra_bytes": 15047680,
+            "batched_peak_step_extra_bytes": 186523648
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 1,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 29.275972200000002,
+            "p50_ms": 29.193357499999998,
+            "p95_ms": 29.719778,
+            "stddev_ms": 0.2995393571101884,
+            "min_ms": 28.994525,
+            "max_ms": 31.100855
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 29.448693549999994,
+            "p50_ms": 29.3616545,
+            "p95_ms": 29.918712,
+            "stddev_ms": 0.33359680888019216,
+            "min_ms": 29.135992,
+            "max_ms": 30.9715
+          },
+          "speedup_mean": 0.9941348382838534,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_time": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2538298880,
+            "batched_peak_allocated_bytes": 2547621888,
+            "serial_peak_step_extra_bytes": 15637504,
+            "batched_peak_step_extra_bytes": 24960512
+          },
+          "repeat": 2
+        },
+        {
+          "batch": 2,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 58.413229875,
+            "p50_ms": 58.290246,
+            "p95_ms": 59.183121,
+            "stddev_ms": 0.40617007188231447,
+            "min_ms": 57.951718,
+            "max_ms": 60.262028
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 30.796292012500004,
+            "p50_ms": 30.6904605,
+            "p95_ms": 31.337804,
+            "stddev_ms": 0.3785149598847285,
+            "min_ms": 30.384904,
+            "max_ms": 33.553175
+          },
+          "speedup_mean": 1.896761787142766,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 3.2782554626464844e-07,
+              "max_relative_l2": 2.547721351220389e-06
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 4.76837158203125e-07,
+              "max_relative_l2": 5.12772260208294e-07
+            },
+            "perception_cache_last_time": {
+              "max_abs": 6.103515625e-05,
+              "max_relative_l2": 5.747611453443824e-07
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2554639872,
+            "batched_peak_allocated_bytes": 2587371008,
+            "serial_peak_step_extra_bytes": 15637504,
+            "batched_peak_step_extra_bytes": 48368640
+          },
+          "repeat": 2
+        },
+        {
+          "batch": 4,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 117.07923601249999,
+            "p50_ms": 116.70952249999999,
+            "p95_ms": 118.937401,
+            "stddev_ms": 0.9328665073381545,
+            "min_ms": 115.605285,
+            "max_ms": 120.868388
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 31.299792500000002,
+            "p50_ms": 31.256566,
+            "p95_ms": 31.745413,
+            "stddev_ms": 0.23643267170000007,
+            "min_ms": 30.90352,
+            "max_ms": 32.110362
+          },
+          "speedup_mean": 3.7405754690706012,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 2.682209014892578e-07,
+              "max_relative_l2": 1.7865580730358488e-06
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 8.195638656616211e-07,
+              "max_relative_l2": 5.812124754811521e-07
+            },
+            "perception_cache_last_time": {
+              "max_abs": 6.29425048828125e-05,
+              "max_relative_l2": 6.241054961719783e-07
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2585224704,
+            "batched_peak_allocated_bytes": 2664083968,
+            "serial_peak_step_extra_bytes": 14720000,
+            "batched_peak_step_extra_bytes": 93906944
+          },
+          "repeat": 2
+        },
+        {
+          "batch": 8,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 234.48014885000003,
+            "p50_ms": 234.11769600000002,
+            "p95_ms": 237.04046,
+            "stddev_ms": 1.636194509056252,
+            "min_ms": 231.868573,
+            "max_ms": 239.720064
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.2796071375,
+            "p50_ms": 32.1798245,
+            "p95_ms": 32.870528,
+            "stddev_ms": 0.3889667817364276,
+            "min_ms": 31.814338,
+            "max_ms": 34.089463
+          },
+          "speedup_mean": 7.26403353830161,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 3.5762786865234375e-07,
+              "max_relative_l2": 2.517408347557648e-06
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 8.810311555862427e-07,
+              "max_relative_l2": 6.572884103661636e-07
+            },
+            "perception_cache_last_time": {
+              "max_abs": 6.389617919921875e-05,
+              "max_relative_l2": 6.711304081363778e-07
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 2648163840,
+            "batched_peak_allocated_bytes": 2820557312,
+            "serial_peak_step_extra_bytes": 15047680,
+            "batched_peak_step_extra_bytes": 186523648
+          },
+          "repeat": 2
+        }
+      ],
+      "source_artifact": "perception-fp32.json",
+      "source_artifact_sha256": "0d2da05a2ac636b24582d6466cffe4fa03b1cecf0ecb25cbfb853c9ab1491c76"
+    },
+    "bf16": {
+      "passed": false,
+      "audio_sha256": "9602d5f78799644964b631e632c5740c325d518847cbb1ffb8917dee7abd17c1",
+      "dtype": "bfloat16",
+      "gpu": "NVIDIA A800-SXM4-80GB",
+      "torch_version": "2.13.0+cu129",
+      "vllm_version": "0.31.0",
+      "vllm_omni_version": "0.31.0",
+      "implementation_sha256": "44abad73b2a5da294147b000ebb34c11b7624a926457acbc36435aac2374f624",
+      "reference_sha256": "1039f59dfd989749d824275d47312104cd56c55e4df9fbfd409309fad4f7d3e6",
+      "steps": 96,
+      "warmup": 16,
+      "repeats": 2,
+      "weights": {
+        "loaded_tensors": 640,
+        "strict_load": true
+      },
+      "timing_scope": "synchronized whole-batch wall time; PCM/mel/Conformer/projection/cache commit",
+      "memory_scope": "peak allocated per step; both A/B state sets retained; reset before each timed call",
+      "relative_l2_limit": 0.02,
+      "float32_matmul_precision": "highest",
+      "cudnn_allow_tf32": true,
+      "lifecycle": {
+        "independent_rows_bitwise_equal": true,
+        "pause_replay_reorder_reopen_passed": true,
+        "errors": {
+          "duplex_frame": {
+            "max_abs": 0.00921630859375,
+            "max_relative_l2": 0.06325304508209229
+          },
+          "perception_cache_last_channel": {
+            "max_abs": 0.014404296875,
+            "max_relative_l2": 0.013232618570327759
+          },
+          "perception_cache_last_time": {
+            "max_abs": 1.34375,
+            "max_relative_l2": 0.010658069513738155
+          }
+        }
+      },
+      "batches": [
+        {
+          "batch": 1,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 30.4227525625,
+            "p50_ms": 30.136705499999998,
+            "p95_ms": 31.656784,
+            "stddev_ms": 0.7579475702487913,
+            "min_ms": 29.603147,
+            "max_ms": 33.343838
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 30.53948095,
+            "p50_ms": 30.340041,
+            "p95_ms": 31.833682,
+            "stddev_ms": 0.7144880177288473,
+            "min_ms": 29.818274,
+            "max_ms": 34.29086
+          },
+          "speedup_mean": 0.9961777874453364,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_time": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1272294912,
+            "batched_peak_allocated_bytes": 1276498432,
+            "serial_peak_step_extra_bytes": 7396864,
+            "batched_peak_step_extra_bytes": 11600384
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 2,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 60.460526912499994,
+            "p50_ms": 59.918549,
+            "p95_ms": 62.461133,
+            "stddev_ms": 1.268260978762989,
+            "min_ms": 59.273203,
+            "max_ms": 65.758987
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.270839037500004,
+            "p50_ms": 32.0018205,
+            "p95_ms": 33.303046,
+            "stddev_ms": 0.6233885193591845,
+            "min_ms": 31.614992,
+            "max_ms": 35.013187
+          },
+          "speedup_mean": 1.873534395627038,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.00634765625,
+              "max_relative_l2": 0.04883897677063942
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0135498046875,
+              "max_relative_l2": 0.011962433345615864
+            },
+            "perception_cache_last_time": {
+              "max_abs": 1.6875,
+              "max_relative_l2": 0.00996998231858015
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1280033280,
+            "batched_peak_allocated_bytes": 1296717312,
+            "serial_peak_step_extra_bytes": 7396864,
+            "batched_peak_step_extra_bytes": 24080896
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 4,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 118.5550508625,
+            "p50_ms": 118.43315,
+            "p95_ms": 122.841139,
+            "stddev_ms": 2.673141079228787,
+            "min_ms": 113.77307,
+            "max_ms": 126.491029
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.1320628,
+            "p50_ms": 32.0173635,
+            "p95_ms": 33.410181,
+            "stddev_ms": 0.9243891063302211,
+            "min_ms": 30.743796,
+            "max_ms": 36.002703
+          },
+          "speedup_mean": 3.6896184225838122,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.00927734375,
+              "max_relative_l2": 0.054947298020124435
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.01409912109375,
+              "max_relative_l2": 0.01336096040904522
+            },
+            "perception_cache_last_time": {
+              "max_abs": 1.53125,
+              "max_relative_l2": 0.011074989102780819
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1296427520,
+            "batched_peak_allocated_bytes": 1337123328,
+            "serial_peak_step_extra_bytes": 7396864,
+            "batched_peak_step_extra_bytes": 48092672
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 8,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 237.96318664999998,
+            "p50_ms": 237.011573,
+            "p95_ms": 247.192886,
+            "stddev_ms": 4.888966123031652,
+            "min_ms": 229.327757,
+            "max_ms": 250.927912
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.9608714375,
+            "p50_ms": 32.616355999999996,
+            "p95_ms": 34.993577,
+            "stddev_ms": 1.3492944424341267,
+            "min_ms": 31.348755,
+            "max_ms": 40.764503
+          },
+          "speedup_mean": 7.219565996646139,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.01171875,
+              "max_relative_l2": 0.07430528849363327
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0224609375,
+              "max_relative_l2": 0.013682176358997822
+            },
+            "perception_cache_last_time": {
+              "max_abs": 1.875,
+              "max_relative_l2": 0.011090777814388275
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1328626176,
+            "batched_peak_allocated_bytes": 1414090752,
+            "serial_peak_step_extra_bytes": 8314368,
+            "batched_peak_step_extra_bytes": 94051840
+          },
+          "repeat": 1
+        },
+        {
+          "batch": 1,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 29.186685575000002,
+            "p50_ms": 28.981787,
+            "p95_ms": 30.37726,
+            "stddev_ms": 0.5862173592795333,
+            "min_ms": 28.54422,
+            "max_ms": 31.05478
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 29.3778791,
+            "p50_ms": 29.164026,
+            "p95_ms": 30.31534,
+            "stddev_ms": 0.7914406944043347,
+            "min_ms": 28.687814,
+            "max_ms": 34.052674
+          },
+          "speedup_mean": 0.993491922124494,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            },
+            "perception_cache_last_time": {
+              "max_abs": 0.0,
+              "max_relative_l2": 0.0
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1272294912,
+            "batched_peak_allocated_bytes": 1276498432,
+            "serial_peak_step_extra_bytes": 7396864,
+            "batched_peak_step_extra_bytes": 11600384
+          },
+          "repeat": 2
+        },
+        {
+          "batch": 2,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 59.552696512500006,
+            "p50_ms": 59.6776185,
+            "p95_ms": 61.496628,
+            "stddev_ms": 1.394856898273242,
+            "min_ms": 56.46696,
+            "max_ms": 62.894377
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 31.993570650000002,
+            "p50_ms": 32.007490000000004,
+            "p95_ms": 33.244759,
+            "stddev_ms": 1.1332229632813338,
+            "min_ms": 30.21023,
+            "max_ms": 37.502759
+          },
+          "speedup_mean": 1.8613957524150246,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.00634765625,
+              "max_relative_l2": 0.04883897677063942
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0135498046875,
+              "max_relative_l2": 0.011962433345615864
+            },
+            "perception_cache_last_time": {
+              "max_abs": 1.6875,
+              "max_relative_l2": 0.00996998231858015
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1280033280,
+            "batched_peak_allocated_bytes": 1296717312,
+            "serial_peak_step_extra_bytes": 7396864,
+            "batched_peak_step_extra_bytes": 24080896
+          },
+          "repeat": 2
+        },
+        {
+          "batch": 4,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 119.45944373749998,
+            "p50_ms": 119.194005,
+            "p95_ms": 122.020665,
+            "stddev_ms": 1.3646585529982285,
+            "min_ms": 117.915514,
+            "max_ms": 124.434572
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.379780787499996,
+            "p50_ms": 32.286384,
+            "p95_ms": 33.310276,
+            "stddev_ms": 0.5205861555946983,
+            "min_ms": 31.731003,
+            "max_ms": 34.920097
+          },
+          "speedup_mean": 3.689322189099456,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.00927734375,
+              "max_relative_l2": 0.054947298020124435
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.01409912109375,
+              "max_relative_l2": 0.01336096040904522
+            },
+            "perception_cache_last_time": {
+              "max_abs": 1.53125,
+              "max_relative_l2": 0.011074989102780819
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1296427520,
+            "batched_peak_allocated_bytes": 1337123328,
+            "serial_peak_step_extra_bytes": 7396864,
+            "batched_peak_step_extra_bytes": 48092672
+          },
+          "repeat": 2
+        },
+        {
+          "batch": 8,
+          "serial": {
+            "samples": 80,
+            "mean_ms": 235.1091764375,
+            "p50_ms": 235.9867115,
+            "p95_ms": 241.871243,
+            "stddev_ms": 3.804094621523799,
+            "min_ms": 230.224092,
+            "max_ms": 247.845924
+          },
+          "batched": {
+            "samples": 80,
+            "mean_ms": 32.2967259375,
+            "p50_ms": 32.387541,
+            "p95_ms": 33.143302,
+            "stddev_ms": 0.6428398674262187,
+            "min_ms": 31.508632,
+            "max_ms": 35.765983
+          },
+          "speedup_mean": 7.2796597677572255,
+          "errors": {
+            "duplex_frame": {
+              "max_abs": 0.01171875,
+              "max_relative_l2": 0.07430528849363327
+            },
+            "perception_cache_last_channel": {
+              "max_abs": 0.0224609375,
+              "max_relative_l2": 0.013682176358997822
+            },
+            "perception_cache_last_time": {
+              "max_abs": 1.875,
+              "max_relative_l2": 0.011090777814388275
+            }
+          },
+          "memory": {
+            "serial_peak_allocated_bytes": 1328626176,
+            "batched_peak_allocated_bytes": 1414090752,
+            "serial_peak_step_extra_bytes": 8314368,
+            "batched_peak_step_extra_bytes": 94051840
+          },
+          "repeat": 2
+        }
+      ],
+      "source_artifact": "perception-bf16.json",
+      "source_artifact_sha256": "9cde05eb4a2ae98aafa96d8ef51f0fee8e476bb3b255232571bca41e2d490d80"
+    }
+  },
+  "native": {
+    "scope": "One flag-off/on round on the same patched checkout, eager four-session profile, BF16 thinker and FP32 native talker; output-count threshold is not input acknowledgement or realtime/quality acceptance.",
+    "warmup": 17,
+    "frames": 128,
+    "row_offset_frames": 19,
+    "off": {
+      "batch_histogram": {
+        "1": 1241
+      },
+      "finished_events": 7,
+      "last_finished_remaining": [],
+      "protocol_checks_passed": true,
+      "source_artifact": "native-serial-resampled/summary.json",
+      "source_artifact_sha256": "bc80fbec11cd5f5f8f9d9a330e6d980bd76a634f44ae534b503aab238d3a2653",
+      "cohorts": [
+        {
+          "sessions": 1,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 173,
+              "elapsed_s": 10.160763118416071,
+              "drain_after_last_input_s": 0.0008784988895058632,
+              "errors": [],
+              "audio_rms": 0.007809102535247803,
+              "gap_p50_ms": 64.36034198850393,
+              "gap_p95_ms": 69.63192000985141
+            }
+          ]
+        },
+        {
+          "sessions": 2,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 14.251340946182609,
+              "drain_after_last_input_s": 4.091239655390382,
+              "errors": [],
+              "audio_rms": 0.012816538102924824,
+              "gap_p50_ms": 102.63208113610744,
+              "gap_p95_ms": 108.79275314509867
+            },
+            {
+              "row": 1,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 14.286454469896853,
+              "drain_after_last_input_s": 4.12617527320981,
+              "errors": [],
+              "audio_rms": 0.010727716609835625,
+              "gap_p50_ms": 102.71506197750568,
+              "gap_p95_ms": 108.31746449694037
+            }
+          ]
+        },
+        {
+          "sessions": 4,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 23.872551186941564,
+              "drain_after_last_input_s": 13.712378081865609,
+              "errors": [],
+              "audio_rms": 0.0076880375854671,
+              "gap_p50_ms": 171.1593521758914,
+              "gap_p95_ms": 222.57142337039113
+            },
+            {
+              "row": 1,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 23.858157663606107,
+              "drain_after_last_input_s": 13.698050257749856,
+              "errors": [],
+              "audio_rms": 0.01164578553289175,
+              "gap_p50_ms": 173.149392940104,
+              "gap_p95_ms": 227.4790484458208
+            },
+            {
+              "row": 2,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 23.83787072636187,
+              "drain_after_last_input_s": 13.678057041019201,
+              "errors": [],
+              "audio_rms": 0.009752047248184681,
+              "gap_p50_ms": 172.18076344579458,
+              "gap_p95_ms": 211.55146416276693
+            },
+            {
+              "row": 3,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 23.908563203178346,
+              "drain_after_last_input_s": 13.748319185338914,
+              "errors": [],
+              "audio_rms": 0.009972892701625824,
+              "gap_p50_ms": 169.53218262642622,
+              "gap_p95_ms": 207.93972788378596
+            }
+          ]
+        },
+        {
+          "sessions": 1,
+          "reopen": true,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 173,
+              "elapsed_s": 10.159379242919385,
+              "drain_after_last_input_s": 0.000590556301176548,
+              "errors": [],
+              "audio_rms": 0.011041468940675259,
+              "gap_p50_ms": 64.51195478439331,
+              "gap_p95_ms": 67.57969744503498
+            }
+          ]
+        }
+      ]
+    },
+    "on": {
+      "batch_histogram": {
+        "1": 340,
+        "2": 208,
+        "3": 1,
+        "4": 235
+      },
+      "finished_events": 7,
+      "last_finished_remaining": [],
+      "protocol_checks_passed": true,
+      "source_artifact": "native-batched/summary.json",
+      "source_artifact_sha256": "ffb7f9963f5472c95980c718bf6ad86f8d39e0fc3abf135f07792f0d2ded4b53",
+      "cohorts": [
+        {
+          "sessions": 1,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 163,
+              "elapsed_s": 10.160187114030123,
+              "drain_after_last_input_s": 0.0006476873531937599,
+              "errors": [],
+              "audio_rms": 0.011657319962978363,
+              "gap_p50_ms": 67.36306473612785,
+              "gap_p95_ms": 89.57624491304159
+            }
+          ]
+        },
+        {
+          "sessions": 2,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 15.304672241210938,
+              "drain_after_last_input_s": 5.145438033156097,
+              "errors": [],
+              "audio_rms": 0.01131172850728035,
+              "gap_p50_ms": 108.14246721565723,
+              "gap_p95_ms": 148.21330849081275
+            },
+            {
+              "row": 1,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 15.449648940004408,
+              "drain_after_last_input_s": 5.2899728855118155,
+              "errors": [],
+              "audio_rms": 0.011624087579548359,
+              "gap_p50_ms": 108.61409548670053,
+              "gap_p95_ms": 147.78253519907594
+            }
+          ]
+        },
+        {
+          "sessions": 4,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 19.927074923180044,
+              "drain_after_last_input_s": 9.767213315702975,
+              "errors": [],
+              "audio_rms": 0.006399174220860004,
+              "gap_p50_ms": 136.6853415966034,
+              "gap_p95_ms": 184.22816609963763
+            },
+            {
+              "row": 1,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 19.966171109117568,
+              "drain_after_last_input_s": 9.805259968154132,
+              "errors": [],
+              "audio_rms": 0.010612844489514828,
+              "gap_p50_ms": 135.80314349383116,
+              "gap_p95_ms": 172.0277035608887
+            },
+            {
+              "row": 2,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 20.0435198135674,
+              "drain_after_last_input_s": 9.882991314865649,
+              "errors": [],
+              "audio_rms": 0.008007868193089962,
+              "gap_p50_ms": 136.45575940608978,
+              "gap_p95_ms": 186.70629560947415
+            },
+            {
+              "row": 3,
+              "input_frames": 145,
+              "audio_packets": 145,
+              "elapsed_s": 20.05850226059556,
+              "drain_after_last_input_s": 9.8976119607687,
+              "errors": [],
+              "audio_rms": 0.01036676112562418,
+              "gap_p50_ms": 136.79956551641226,
+              "gap_p95_ms": 181.20363047346464
+            }
+          ]
+        },
+        {
+          "sessions": 1,
+          "reopen": true,
+          "streams": [
+            {
+              "row": 0,
+              "input_frames": 145,
+              "audio_packets": 164,
+              "elapsed_s": 10.162218208424747,
+              "drain_after_last_input_s": 0.0007001543417572975,
+              "errors": [],
+              "audio_rms": 0.008641665801405907,
+              "gap_p50_ms": 64.59445832297206,
+              "gap_p95_ms": 102.22710762172937
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
