@@ -1,6 +1,6 @@
 # VoiceChat GPU validation: 2026-10-08
 
-Validation of [PR #8597](https://github.com/vllm-project/vllm-omni/pull/8597) at `acdb9c1e03e785cf6d2e2220d174d0a620d27c28`, against the unmodified singleton method from its upstream base `e54e185593ff84bb532fe8ca166147e142ae1f43`. The contribution remains three files; this evidence and tooling are on a separate validation branch.
+Component and A/B validation of [PR #8597](https://github.com/vllm-project/vllm-omni/pull/8597) at `acdb9c1e03e785cf6d2e2220d174d0a620d27c28`, against the unmodified singleton method from its upstream base `e54e185593ff84bb532fe8ca166147e142ae1f43`. The contribution remains three files; this evidence and tooling are on a separate validation branch. The automatic-batching follow-up below validates current PR head `e5c4cffbbf201012fe41ad782c978ce91cac5b1f`.
 
 ## Environment and method
 
@@ -66,7 +66,7 @@ Each native table cell is mean completion time with the range of its two cohort 
 | graph | 2 | 89.8–107.3 | 75.4–97.4 |
 | graph | 4 | 164.5–199.6 | 113.3–134.0 |
 
-N4 completion improved in both paired rounds (mean reductions 21.1% eager, 36.9% Graph), while N1 completion remained at the input-pacing floor. Packet-gap improvements are not uniform: the second eager N2 round is about 10 ms worse despite slightly shorter completion, and Graph N1 gaps are a few milliseconds higher. The count-based completion and the unmodified autonomous clock do not isolate a causal latency effect; this result supports the component optimization and delivery/lifecycle correctness, not uniform tail-latency or deadline guarantees. The model option remains disabled by default.
+N4 completion improved in both paired rounds (mean reductions 21.1% eager, 36.9% Graph), while N1 completion remained at the input-pacing floor. Packet-gap improvements are not uniform: the second eager N2 round is about 10 ms worse despite slightly shorter completion, and Graph N1 gaps are a few milliseconds higher. The count-based completion and the unmodified autonomous clock do not isolate a causal latency effect; this result supports the component optimization and delivery/lifecycle correctness, not uniform tail-latency or deadline guarantees. At this measured revision the model option was disabled by default; the follow-up below removes that option.
 
 ## CPU and code checks
 
@@ -74,9 +74,9 @@ At `acdb9c1e03e785cf6d2e2220d174d0a620d27c28`, the complete VoiceChat/runner CPU
 
 Upstream DCO and documentation checks passed. The upstream pre-commit job did not start because GitHub failed to acquire a runner five times; its empty step list and annotations confirm an infrastructure failure. This is not reported as an upstream lint pass. A rerun request returned that the run could not be rerun.
 
-## Reproduction
+## Reproduce the component and A/B measurements
 
-Use a matching existing environment, local checkpoint/tokenizer, a free A800 80 GB GPU, and a fresh output directory. Check out the PR at the pinned head in `VOICECHAT_PR_REPO`; check out this validation branch in `VOICECHAT_VALIDATION_REPO`. Export only its benchmark package into a tools directory so the archived production model cannot shadow the PR model.
+Use a matching existing environment, local checkpoint/tokenizer, a free A800 80 GB GPU, and a fresh output directory. Check out the PR at `acdb9c1e03e785cf6d2e2220d174d0a620d27c28` in `VOICECHAT_PR_REPO`; check out this validation branch in `VOICECHAT_VALIDATION_REPO`. Export only its benchmark package into a tools directory so the archived production model cannot shadow the PR model.
 
 ```bash
 export VOICECHAT_PR_REPO=/path/to/pr-checkout
@@ -172,5 +172,48 @@ pre-commit run --show-diff-on-failure --files \
   tests/model_executor/models/test_nemotron_voicechat_perception_batch.py \
   recipes/NVIDIA/NemotronLabs-VoiceChat.md
 ```
+
+## Automatic batching at the current PR head
+
+At `e5c4cffbbf201012fe41ad782c978ce91cac5b1f`, the model configuration flag and its early-return branch are removed. Compatible scheduled duplex frames are batched automatically through the existing runner hook; scalar preprocessing remains supported through the same frame helper. The frame preparation, grouping, computation, and cache commit functions are AST-identical to `acdb9c1e03e785cf6d2e2220d174d0a620d27c28`, so the earlier component timings remain measurements of that revision rather than a new timing run. The current thinker source SHA256 is `a9504403a6ad541e3ac62140238c3c0892a195031e8a8b1be9280f384d6b5ba7`.
+
+The current head passed **99 CPU tests, 1 skipped, 10 deselected, 14 warnings in 6.19 s**, plus all applicable local pre-commit checks. Two fresh native servers, one eager and one Graph, used the same four-session profiles and real local checkpoint/audio as above, without a batching override. Each server ran 1/2/4-session cohorts and a reopened singleton, with 17 warmup and 128 measured input frames per stream. All 16 streams passed packet delivery, format/sample-rate, protocol, reopening, and final model-session cleanup checks. Thinker and talker Graph capture succeeded in the Graph server; perception remains eager. The upstream automatic-silence clock was unmodified. Both servers ran sequentially on GPU 7 and shut down cleanly; no other GPU process was stopped.
+
+| Mode | Streams | Observed perception batch sizes | Final model sessions | Server exit code |
+| --- | --- | --- | --- | --- |
+| eager | 8 | 1, 2, 3, 4 | empty | 0 |
+| graph | 8 | 1, 2, 3, 4 | empty | 0 |
+
+These are default-path correctness checks rather than another paired performance comparison. The delivery-count and packet-gap limits described above still apply.
+
+To reproduce this follow-up, use the same environment/tool export and profile-generation commands above, with `VOICECHAT_PR_REPO` checked out at `e5c4cffbbf201012fe41ad782c978ce91cac5b1f`. Run each mode on an available GPU with a fresh case directory and free port. Start the server without `--stage-overrides`:
+
+```bash
+export VOICECHAT_GPU=7 VOICECHAT_PORT=18431 VOICECHAT_MODE=graph
+export VOICECHAT_CASE="$VOICECHAT_RUN/graph-automatic"
+mkdir "$VOICECHAT_CASE"
+cd "$VOICECHAT_PR_REPO"
+env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy \
+  CUDA_VISIBLE_DEVICES="$VOICECHAT_GPU" NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
+  VOICECHAT_PERCEPTION_TRACE="$VOICECHAT_CASE/perception.jsonl" \
+  PYTHONPATH="$VOICECHAT_TOOLS/benchmarks/nemotron_voicechat/_native_observer:$VOICECHAT_TOOLS:$VOICECHAT_PR_REPO" \
+  "$VOICECHAT_PYTHON" -m vllm_omni.entrypoints.cli.main serve "$VOICECHAT_MODEL" --omni \
+  --host 127.0.0.1 --port "$VOICECHAT_PORT" --served-model-name voicechat-pr-validation \
+  --deploy-config "$VOICECHAT_RUN/$VOICECHAT_MODE.yaml"
+```
+
+After `/health` is ready, run the client using the same exported paths and port:
+
+```bash
+PYTHONPATH="$VOICECHAT_TOOLS:$VOICECHAT_PR_REPO" \
+  NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
+  "$VOICECHAT_PYTHON" "$VOICECHAT_TOOLS/benchmarks/nemotron_voicechat/native_probe.py" \
+  --url "ws://127.0.0.1:$VOICECHAT_PORT/v1/realtime" --model-dir "$VOICECHAT_MODEL" \
+  --audio "$VOICECHAT_MODEL/turn_taking.wav" --output "$VOICECHAT_CASE/measured" \
+  --perception-trace "$VOICECHAT_CASE/perception.jsonl" --expect-batched \
+  --batches 1 2 4 --frames 128 --warmup 17
+```
+
+Stop only the server you started and repeat with `VOICECHAT_MODE=eager`, a fresh case directory, and a distinct free port. Keep at most two test GPUs active concurrently.
 
 AI assistance: OpenAI Codex assisted with benchmark tooling, validation, and this record.
