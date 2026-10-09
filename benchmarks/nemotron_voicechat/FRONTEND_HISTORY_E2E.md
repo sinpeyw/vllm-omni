@@ -14,27 +14,29 @@ Native serving can insert silence input frames between real client inputs. Ident
 
 ## Metrics
 
-**Client end-to-end audio completion RTF** = time from the first real input send to receipt of the PCM corresponding to the last real input, divided by the corresponding decoded PCM duration (120 seconds). It includes the entire inference, frontend and localhost WebSocket delivery path. Outputs corresponding to automatic silence inputs are excluded from the denominator. Real-time input pacing puts this completion metric near 1 when there is little backlog; it measures completion under a live input stream rather than peak offline generation throughput.
-
 **Final-quarter input-to-PCM P95** = the nearest-rank 95th percentile of client PCM arrival minus its corresponding real input's send time, for the final 375 of 1,500 real frames. The last quarter covers the final 30 seconds of supplied input. It measures the delivery lag that a near-1 whole-session RTF can hide. It ends at client PCM receipt and excludes browser playback and semantic response-completion timing. Each summary is the median of the three run-level values.
+
+**First-quarter diagnostic** uses the same percentile and window size for the first 375 real frames (the first 30 seconds of supplied input). This was calculated during follow-up analysis from the unchanged six raw records. It explains how the baseline deteriorates within a session; no additional run or selected subset of runs is introduced.
+
+**Client end-to-end audio completion RTF**, retained as a supporting measurement, is time from the first real input send to receipt of the PCM corresponding to the last real input, divided by the corresponding decoded PCM duration (120 seconds). It includes the entire inference, frontend and localhost WebSocket delivery path. Outputs corresponding to automatic silence inputs are excluded from the denominator. Real-time input pacing puts this completion metric near 1 when there is little backlog; it measures completion under a live input stream rather than peak offline generation throughput. All per-run RTF values remain in the complete table below.
 
 ## Results
 
-| Client metric | Base median | Fix median |
+| Client input-to-PCM P95 | Base median | Fix median |
 | --- | --- | --- |
-| Final-quarter input-to-PCM P95 | **1,777.55 ms** | **141.64 ms** |
-| End-to-end audio completion RTF | **1.0151** | **1.0000** |
+| First 30 seconds of input | **140.13 ms** | **139.18 ms** |
+| Last 30 seconds of input | **1,777.55 ms** | **141.64 ms** |
 
-Final-quarter P95 is **12.55× lower (92.03% reduction)**. Whole-session RTF improves by **1.49%**; the dominant user-facing gain is lower delivery lag near the end of the session. The result does not imply a 12.55× increase in model generation throughput. Unchanged GPU computations are paired with suppression of unused client codec snapshots, which removes quadratic frontend accumulation and copying. The [isolated CPU replay](FRONTEND_HISTORY_CPU_REPLAY.md) documents that mechanism separately.
+Baseline P95 grows from about 140 ms to 1.78 seconds within the 120-second session. Fixed P95 stays near 140 ms in both windows. Final-quarter P95 is **12.55× lower (92.03% reduction)**. The main benefit is stable delivery as the session grows. Unchanged GPU computations are paired with suppression of unused client codec snapshots, which removes quadratic frontend accumulation and copying. The [isolated CPU replay](FRONTEND_HISTORY_CPU_REPLAY.md) documents that mechanism separately.
 
-| Arm | Run | RTF | Final-quarter P95, ms | Completion, s | Planned automatic silence inputs | Received PCM packets |
-| --- | --- | --- | --- | --- | --- | --- |
-| base | 1 | 1.014309 | 1685.234 | 121.717 | 390 | 1886 |
-| base | 2 | 1.015106 | 1777.549 | 121.813 | 410 | 1906 |
-| base | 3 | 1.040464 | 5691.544 | 124.856 | 478 | 1972 |
-| fix | 1 | 1.000486 | 141.277 | 120.058 | 359 | 1858 |
-| fix | 2 | 1.000010 | 142.231 | 120.001 | 326 | 1825 |
-| fix | 3 | 1.000028 | 141.636 | 120.003 | 338 | 1837 |
+| Arm | Run | First-quarter P95, ms | Final-quarter P95, ms | RTF | Completion, s | Planned automatic silence inputs | Received PCM packets |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| base | 1 | 139.147 | 1685.234 | 1.014309 | 121.717 | 390 | 1886 |
+| base | 2 | 140.389 | 1777.549 | 1.015106 | 121.813 | 410 | 1906 |
+| base | 3 | 140.133 | 5691.544 | 1.040464 | 124.856 | 478 | 1972 |
+| fix | 1 | 141.160 | 141.277 | 1.000486 | 120.058 | 359 | 1858 |
+| fix | 2 | 139.075 | 142.231 | 1.000010 | 120.001 | 326 | 1825 |
+| fix | 3 | 139.182 | 141.636 | 1.000028 | 120.003 | 338 | 1837 |
 
 Automatic inputs include any continuation planned just before closing; PCM counts can include trailing automatic output. Metrics use only the 1,500 matched real-input frames. The baseline's per-run P95 varies from 1.69 to 5.69 seconds, while fixed P95 remains between 141 and 143 ms. All runs are retained; no favorable single pairing replaces the three-run median.
 
