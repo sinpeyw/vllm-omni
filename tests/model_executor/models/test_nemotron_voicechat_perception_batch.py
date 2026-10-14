@@ -37,6 +37,7 @@ def thinker():
         model._dtype = torch.float32
         model._hidden = 16
         model._sessions = {}
+        model._perception_graph = None
         model._duplex_previous_text_tokens = {}
         model._w_text = model._w_audio = model._w_func = 1.0
         model._use_function_head = True
