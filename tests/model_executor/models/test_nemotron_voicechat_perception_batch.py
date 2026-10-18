@@ -103,7 +103,12 @@ def append(row, seq):
             "sample_rate_hz": 16000,
             "audio": base64.b64encode(pcm(row, seq).tobytes()).decode("ascii"),
         },
-        "runtime_config": {"nvc_text_pad_id": 0, "nvc_prompt_token_ids": [1, 2]},
+        "runtime_config": {
+            "nvc_text_pad_id": 0,
+            "nvc_prompt_token_ids": [1, 2],
+            "nvc_function_sotc_id": 5,
+            "nvc_function_eotc_id": 6,
+        },
     }
 
 
@@ -173,6 +178,10 @@ def test_runner_hook_computes_once_and_scalar_fusion_reuses_it(thinker, monkeypa
             request_id=request, input_ids=torch.zeros(3, dtype=torch.long), info={}, duplex=append(row, 1)
         )
         assert embeds.shape == (3, thinker._hidden)
+        session = thinker._sessions[request]
+        assert session["nvc_function_sotc_id"] == 5
+        assert session["nvc_function_eotc_id"] == 6
+        assert session["function_call_active"] is False
         thinker._duplex_previous_text_tokens[request] = row + 2
     assert calls == [(2, 0)]
     for row, request in enumerate(["a", "b"]):
