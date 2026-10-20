@@ -1,22 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Omni project
 
-"""Phase routing and independently owned recurrent state need no CUDA."""
+"""CPU routing contracts and exact CUDA replay of independent recurrent state."""
+
+from collections import Counter
 
 import pytest
 import torch
 from omegaconf import DictConfig
 from torch import nn
-from vllm.config import CompilationConfig, CUDAGraphMode, ModelConfig, VllmConfig
+from vllm.config import CompilationConfig, CUDAGraphMode, DeviceConfig, ModelConfig, ParallelConfig, VllmConfig
 from vllm.v1.worker.encoder_cudagraph import EncoderCudaGraphManager
 
+from tests.helpers.mark import hardware_test
+from vllm_omni.model_executor.models.nemotron_voicechat import nemotron_voicechat_thinker as thinker_module
 from vllm_omni.model_executor.models.nemotron_voicechat import perception_cudagraph as graphs
+from vllm_omni.model_executor.models.nemotron_voicechat.nemo_vendored.asr.conformer_encoder import ConformerEncoder
 from vllm_omni.model_executor.models.nemotron_voicechat.nemo_vendored.perception import (
     AudioPerceptionModule,
     IdentityConnector,
 )
 
-pytestmark = [pytest.mark.core_model, pytest.mark.cpu]
+pytestmark = pytest.mark.core_model
 
 
 class _Encoder(nn.Module):
@@ -89,13 +94,18 @@ class _CPUManager(EncoderCudaGraphManager):
         self.adapter.postprocess_encoder_output({path: self.outputs[path]}, [0], [1], result, clone=True)
         return [result[0]]
 
+    def get_cumulative_stats(self):
+        return {"graph_hits": self.calls, "graph_misses": 0, "hit_rate": 1.0 if self.calls else 0.0}
 
+
+@pytest.mark.cpu
 def test_graph_returned_state_is_private_across_replays(perception, monkeypatch):
     graph = graphs.PerceptionCudaGraph.__new__(graphs.PerceptionCudaGraph)
     graph.perception = perception
     graph.device, graph.dtype = torch.device("cpu"), torch.float32
     graph.adapter = graphs._PerceptionEncoder(perception, ((1, 0), (3, 1)), _caches())
     graph.manager = _CPUManager(graph.adapter)
+    graph._fallback_reasons = Counter()
     graph.stream = object()
     monkeypatch.setattr(graphs, "current_stream", lambda: graph.stream)
     with torch.inference_mode():
@@ -107,8 +117,16 @@ def test_graph_returned_state_is_private_across_replays(perception, monkeypatch)
         expected = graphs.perception_step(perception, torch.full((1, 2, 3), 2.0), first[2:], 1)
         assert all(torch.equal(a, b) for a, b in zip(steady, expected))
     assert graph.manager.calls == 3
+    assert graph.get_cumulative_stats()["ineligible_misses"] == 0
+    monkeypatch.setattr(graphs, "current_stream", object)
+    with torch.inference_mode():
+        graph.run(torch.ones(1, 2, 1), _caches(), 0)
+    stats = graph.get_cumulative_stats()
+    assert stats["graph_hits"] == 3 and stats["graph_misses"] == 1
+    assert stats["hit_rate"] == 0.75
 
 
+@pytest.mark.cpu
 def test_equal_mel_widths_still_select_by_drop(perception):
     adapter = graphs._PerceptionEncoder(perception, ((3, 0), (3, 1)), _caches())
     for drop, path in ((0, "default"), (1, "steady")):
@@ -117,25 +135,50 @@ def test_equal_mel_widths_still_select_by_drop(perception):
         assert sum(spec.path_output_tokens.values()) == 1
 
 
-@pytest.mark.parametrize("reason", ["shape", "stream", "autocast"])
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    "reason", ["phase", "shape", "stream", "autocast", "training", "device", "dtype", "cache", "grad_enabled"]
+)
 def test_runtime_ineligible_frame_stays_eager(perception, monkeypatch, reason):
+    warnings = []
+    monkeypatch.setattr(graphs.logger, "warning", lambda *args: warnings.append(args))
     graph = graphs.PerceptionCudaGraph.__new__(graphs.PerceptionCudaGraph)
     graph.perception = perception
     graph.device, graph.dtype = torch.device("cpu"), torch.float32
     graph.adapter = graphs._PerceptionEncoder(perception, ((1, 0), (3, 1)), _caches())
     graph.manager = _CPUManager(graph.adapter)
+    graph._fallback_reasons = Counter()
     graph.stream = object()
     monkeypatch.setattr(graphs, "current_stream", lambda: object() if reason == "stream" else graph.stream)
     monkeypatch.setattr(torch, "is_autocast_enabled", lambda device: reason == "autocast")
-    mel = torch.ones(1, 2, 2 if reason == "shape" else 1)
+    mel = torch.ones(1, 2, 2 if reason == "phase" else 1)
     caches = _caches()
-    with torch.inference_mode():
+    if reason == "training":
+        perception.train()
+    elif reason == "shape":
+        mel = mel.expand(2, -1, -1).contiguous()
+        caches = tuple(torch.cat([cache, cache], dim=0 if index == 2 else 1) for index, cache in enumerate(caches))
+    elif reason == "device":
+        graph.device = torch.device("meta")
+    elif reason == "dtype":
+        graph.dtype = torch.float64
+    elif reason == "cache":
+        graph.adapter.caches = tuple(cache.to(torch.float64) for cache in caches)
+    with torch.set_grad_enabled(reason == "grad_enabled"):
         actual = graph.run(mel, caches, 0)
+        graph.run(mel, caches, 0)
         expected = graphs.perception_step(perception, mel, caches, 0)
     assert all(torch.equal(a, b) for a, b in zip(actual, expected))
     assert graph.manager.calls == 0
+    stats = graph.get_cumulative_stats()
+    assert stats["graph_hits"] == 0
+    assert stats["graph_misses"] == stats["ineligible_misses"] == 2 * mel.shape[0]
+    assert stats["fallback_reasons"] == {reason: 2 * mel.shape[0]}
+    assert stats["hit_rate"] == 0.0
+    assert len(warnings) == 1
 
 
+@pytest.mark.cpu
 @pytest.mark.parametrize("reason", ["disabled", "enforce_eager", "mode_none", "cpu", "multi_rank"])
 def test_ineligible_configuration_never_constructs_manager(perception, monkeypatch, reason):
     config = VllmConfig.__new__(VllmConfig)
@@ -161,3 +204,122 @@ def test_ineligible_configuration_never_constructs_manager(perception, monkeypat
 
     monkeypatch.setattr(graphs, "PerceptionCudaGraph", unexpected)
     assert graphs.make_perception_graph(perception, config, ((1, 0), (3, 1))) is None
+
+
+def _small_perception():
+    model = AudioPerceptionModule.__new__(AudioPerceptionModule)
+    nn.Module.__init__(model)
+    model.cfg = DictConfig({"output_dim": 8})
+    model.encoder = ConformerEncoder(
+        feat_in=8,
+        n_layers=2,
+        d_model=16,
+        n_heads=2,
+        subsampling="dw_striding",
+        subsampling_factor=8,
+        subsampling_conv_channels=8,
+        causal_downsampling=True,
+        att_context_size=[5, 0],
+        att_context_style="chunked_limited",
+        conv_kernel_size=9,
+        conv_context_size="causal",
+        conv_norm_type="layer_norm",
+        dropout=0.0,
+        dropout_att=0.0,
+        dropout_emb=0.0,
+        dropout_pre_encoder=0.0,
+    )
+    model.modality_adapter = IdentityConnector()
+    model.proj = nn.Linear(16, 8)
+    return model.eval()
+
+
+def _config(device):
+    config = VllmConfig.__new__(VllmConfig)
+    config.compilation_config = CompilationConfig(cudagraph_mm_encoder=True, cudagraph_mode=CUDAGraphMode.FULL)
+    config.model_config = ModelConfig.__new__(ModelConfig)
+    config.model_config.enforce_eager = False
+    config.model_config.multimodal_config = None
+    config.parallel_config = ParallelConfig()
+    config.device_config = DeviceConfig(device=device)
+    return config
+
+
+@pytest.mark.cpu
+def test_weight_loading_activates_graph_with_actual_streaming_phases(monkeypatch):
+    model = thinker_module.NemotronVoiceChatThinkerForConditionalGeneration.__new__(
+        thinker_module.NemotronVoiceChatThinkerForConditionalGeneration
+    )
+    nn.Module.__init__(model)
+    model.perception = _small_perception()
+    model._streaming_preprocessor = nn.Identity()
+    model.embed_tokens = nn.Embedding(4, 8)
+    model.function_head = nn.Linear(8, 4, bias=False)
+    model.language_model = nn.Linear(8, 8)
+    model._dtype, model._use_function_head = torch.float32, True
+    model._w_text = model._w_audio = model._w_func = 1.0
+    model.vllm_config = _config("cpu")
+    monkeypatch.setattr(
+        model.language_model, "load_weights", lambda weights: {key for key, _ in weights}, raising=False
+    )
+    captured = []
+    sentinel = object()
+
+    def capture(perception, config, phases):
+        assert perception is model.perception and config is model.vllm_config
+        captured.append(phases)
+        return sentinel
+
+    monkeypatch.setattr(thinker_module, "make_perception_graph", capture)
+    weights = [
+        ("stt_model.embed_tokens.weight", model.embed_tokens.weight.detach().clone()),
+        ("stt_model.function_head.weight", model.function_head.weight.detach().clone()),
+        ("stt_model.llm.test", torch.zeros(1)),
+        *[(f"stt_model.perception.{key}", value.clone()) for key, value in model.perception.state_dict().items()],
+    ]
+    model.load_weights(iter(weights))
+    assert model._perception_graph is sentinel
+    assert len(captured) == 1
+    for index in (0, 1, 8):
+        mel = torch.zeros(1, 8, 8 * (index + 1) + 1)
+        chunk, drop = thinker_module.slice_perception_streaming_mel(mel, index, model.perception.encoder.streaming_cfg)
+        assert captured[0][int(index > 0)] == (chunk.shape[-1], drop)
+
+
+@hardware_test(res={"cuda": "L4"}, num_cards=1)
+@torch.inference_mode()
+def test_cuda_manager_replays_interleaved_sessions_exactly():
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(42)
+        perception = _small_perception().to("cuda")
+    streaming = perception.encoder.streaming_cfg
+    phases = []
+    for index in (0, 1):
+        mel = torch.zeros(1, 8, 8 * (index + 1) + 1)
+        chunk, drop = thinker_module.slice_perception_streaming_mel(mel, index, streaming)
+        phases.append((chunk.shape[-1], drop))
+    graph = graphs.make_perception_graph(perception, _config("cuda"), tuple(phases))
+    assert graph is not None
+    assert graph.manager.path_token_budgets == {"default": [0, 1], "steady": [0, 1]}
+    states = [perception.encoder.get_initial_cache_state(1, torch.float32, torch.device("cuda")) for _ in range(2)]
+    references = [tuple(value.clone() for value in caches) for caches in states]
+    generator = torch.Generator(device="cuda").manual_seed(123)
+    frame_count = states[0][0].shape[2] + 3
+    saved = None
+    saved_copy = None
+    for index in range(frame_count):
+        width, drop = phases[int(index > 0)]
+        for row in (0, 1) if index % 2 else (1, 0):
+            mel = torch.randn(1, 8, width, generator=generator, device="cuda")
+            actual = graph.run(mel, states[row], drop)
+            expected = graphs.perception_step(perception, mel, references[row], drop)
+            for result, reference in zip(actual, expected):
+                assert torch.equal(result, reference)
+            states[row], references[row] = actual[2:], expected[2:]
+            if saved is None:
+                saved, saved_copy = actual, tuple(value.clone() for value in actual)
+            assert all(torch.equal(value, copy) for value, copy in zip(saved, saved_copy))
+    assert all(bool((state[2] == state[0].shape[2]).all()) for state in states)
+    stats = graph.get_cumulative_stats()
+    assert stats["graph_hits"] == 2 * frame_count
+    assert stats["graph_misses"] == stats["ineligible_misses"] == 0

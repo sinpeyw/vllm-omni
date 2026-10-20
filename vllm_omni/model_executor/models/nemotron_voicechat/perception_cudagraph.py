@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Omni project
 """Single-frame VoiceChat perception through vLLM's encoder graph manager."""
 
+from collections import Counter
 from collections.abc import Hashable
 from copy import copy
 from typing import cast
@@ -9,6 +10,7 @@ from typing import cast
 import torch
 from vllm.config import CUDAGraphMode, VllmConfig
 from vllm.config.multimodal import MultiModalConfig
+from vllm.logger import init_logger
 from vllm.model_executor.models.interfaces import SupportsEncoderCudaGraph
 from vllm.utils.torch_utils import current_stream
 from vllm.v1.worker.encoder_cudagraph import EncoderCudaGraphManager
@@ -23,6 +25,8 @@ from vllm.v1.worker.encoder_cudagraph_defs import (
 from vllm_omni.platforms import current_omni_platform
 
 from .nemo_vendored.perception import AudioPerceptionModule
+
+logger = init_logger(__name__)
 
 Cache = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 Frame = tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
@@ -148,6 +152,7 @@ class PerceptionCudaGraph:
         self.device, self.dtype = parameter.device, parameter.dtype
         caches = perception.encoder.get_initial_cache_state(batch_size=1, dtype=self.dtype, device=self.device)
         self.adapter = _PerceptionEncoder(perception, phases, caches)
+        self._fallback_reasons: Counter[str] = Counter()
         # A frame and its caches are already placed locally and cannot be split.
         config = copy(vllm_config)
         config.compilation_config = copy(config.compilation_config)
@@ -160,23 +165,55 @@ class PerceptionCudaGraph:
         self.stream = current_stream()
         self.manager.capture(graph_pool=None)
 
-    def run(self, mel: torch.Tensor, caches: Cache, drop: int) -> Frame:
-        phase = mel.shape[-1], drop
-        if (
-            torch.is_grad_enabled()
-            or torch.is_autocast_enabled("cuda")
-            or self.perception.training
-            or phase not in self.adapter.phases
-            or mel.shape[:2] != (1, self.perception.encoder._feat_in)
-            or mel.device != self.device
-            or mel.dtype != self.dtype
-            or any(
-                (x.shape, x.dtype, x.device) != (y.shape, y.dtype, y.device)
-                for x, y in zip(caches, self.adapter.caches)
-            )
-            or current_stream() != self.stream
+    def _ineligible_reason(self, mel: torch.Tensor, caches: Cache, drop: int) -> str | None:
+        if torch.is_grad_enabled():
+            return "grad_enabled"
+        if torch.is_autocast_enabled("cuda"):
+            return "autocast"
+        if self.perception.training:
+            return "training"
+        if (mel.shape[-1], drop) not in self.adapter.phases:
+            return "phase"
+        if mel.shape[:2] != (1, self.perception.encoder._feat_in):
+            return "shape"
+        if mel.device != self.device:
+            return "device"
+        if mel.dtype != self.dtype:
+            return "dtype"
+        if any(
+            (x.shape, x.dtype, x.device) != (y.shape, y.dtype, y.device) for x, y in zip(caches, self.adapter.caches)
         ):
+            return "cache"
+        if current_stream() != self.stream:
+            return "stream"
+        return None
+
+    def get_cumulative_stats(self) -> dict[str, object]:
+        """Include eager fallbacks that bypass the encoder graph manager."""
+        stats = self.manager.get_cumulative_stats()
+        ineligible = sum(self._fallback_reasons.values())
+        hits, misses = stats["graph_hits"], stats["graph_misses"] + ineligible
+        return {
+            **stats,
+            "graph_misses": misses,
+            "ineligible_misses": ineligible,
+            "fallback_reasons": dict(self._fallback_reasons),
+            "hit_rate": hits / (hits + misses) if hits + misses else 0.0,
+        }
+
+    def run(self, mel: torch.Tensor, caches: Cache, drop: int) -> Frame:
+        reason = self._ineligible_reason(mel, caches, drop)
+        if reason is not None:
+            first_fallback = not self._fallback_reasons
+            self._fallback_reasons[reason] += int(mel.shape[0])
+            if first_fallback:
+                logger.warning(
+                    "VoiceChat perception CUDA Graph is enabled but a frame runs eagerly (%s); "
+                    "get_cumulative_stats() includes fallback counts and reasons.",
+                    reason,
+                )
             return perception_step(self.perception, mel, caches, drop)
+        phase = mel.shape[-1], drop
         inputs: dict[str, object] = {"mel": mel, "drop": drop, **dict(zip(_INPUT_KEYS[1:], caches))}
         encoded = self.manager.execute(inputs)[0]
         # Manager owns reusable buffers; private copies prevent cross-session overwrite.

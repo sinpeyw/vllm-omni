@@ -169,7 +169,7 @@ stages:
       cudagraph_mm_encoder: true
 ```
 
-Perception graphs are disabled by default. On single-rank CUDA deployments, vLLM's encoder graph manager captures the first-frame and steady-frame geometries, with one frame per replay and independently owned session caches. Other frame geometries and incompatible tensor shapes, dtypes, or devices use eager perception. Multi-rank deployments, non-CUDA platforms, and `enforce_eager: true` also retain eager perception. This option does not change the existing language-model or talker graph settings.
+Perception graphs are disabled by default and target single-session serving. On single-rank CUDA deployments, vLLM's encoder graph manager captures the first-frame and steady-frame geometries, with one frame per replay and independently owned session caches. This option does not add multi-session admission or capture batch sizes above one. Other frame geometries and incompatible tensor shapes, dtypes, or devices use eager perception. An enabled graph logs its first eager fallback reason. Multi-rank deployments, non-CUDA platforms, and `enforce_eager: true` also retain eager perception. This option does not change the existing language-model or talker graph settings.
 
 In another shell, stream only the user channel of one of NVIDIA's bundled
 stereo conversation fixtures:
