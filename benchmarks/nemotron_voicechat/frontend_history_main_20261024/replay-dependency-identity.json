@@ -1,0 +1,14 @@
+[
+  {
+    "path": "vllm_omni/outputs/output_modality.py",
+    "current_main_blob": "df4fa49dc491cb07fe34c7c9a36d7ae910eabd6b",
+    "loaded_dependency_blob": "0a9cdc09c836afb3cd0dfa8741bde9ea16001122",
+    "identical": false
+  },
+  {
+    "path": "vllm_omni/outputs/utils.py",
+    "current_main_blob": "88fc11fb5c2aa82fd3c05026536a661d4730566d",
+    "loaded_dependency_blob": "88fc11fb5c2aa82fd3c05026536a661d4730566d",
+    "identical": true
+  }
+]

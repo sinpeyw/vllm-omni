@@ -1,0 +1,106 @@
+{
+  "base": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+  "fix": "5defa1a66dcac8d136a1de6252055f853e96292b",
+  "arms": {
+    "base": {
+      "first_quarter_p95_median_ms": 87.911672,
+      "final_quarter_p95_median_ms": 87.396423,
+      "final_quarter_p95_range_ms": [
+        83.400581,
+        137.686458
+      ],
+      "runs": [
+        {
+          "path": "validated-run/base/run-1.json",
+          "raw_sha256": "739454e3b57ed1977cb2fc9529cc9d5d2163b0afcfcd053bed30ab611fc0839a",
+          "revision": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+          "first_quarter_p95_ms": 92.719272,
+          "final_quarter_p95_ms": 137.686458,
+          "pacing_error_p95_ms": 1.104762,
+          "automatic_silence_planned": 33,
+          "received_pcm_frames": 1533,
+          "paired_real_pcm_frames": 1500,
+          "pcm_rms": 0.011015079712099815,
+          "input_payload_sha256": "f1345cffde425b8e7f86cfb2a54f57951164c70c06da631014b03c21b700189c"
+        },
+        {
+          "path": "validated-run/base/run-2.json",
+          "raw_sha256": "1f75ed52502552343546281a9d4a2166de2364f3d7642b525ffac7679023c51b",
+          "revision": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+          "first_quarter_p95_ms": 85.017407,
+          "final_quarter_p95_ms": 87.396423,
+          "pacing_error_p95_ms": 1.161307,
+          "automatic_silence_planned": 18,
+          "received_pcm_frames": 1518,
+          "paired_real_pcm_frames": 1500,
+          "pcm_rms": 0.011243086499746136,
+          "input_payload_sha256": "f1345cffde425b8e7f86cfb2a54f57951164c70c06da631014b03c21b700189c"
+        },
+        {
+          "path": "validated-run/base/run-3.json",
+          "raw_sha256": "1c40893b24f4677a176c11bbbfa04b80299377db15d12c324adcb75174d411c2",
+          "revision": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+          "first_quarter_p95_ms": 87.911672,
+          "final_quarter_p95_ms": 83.400581,
+          "pacing_error_p95_ms": 1.059143,
+          "automatic_silence_planned": 16,
+          "received_pcm_frames": 1516,
+          "paired_real_pcm_frames": 1500,
+          "pcm_rms": 0.010052694710576246,
+          "input_payload_sha256": "f1345cffde425b8e7f86cfb2a54f57951164c70c06da631014b03c21b700189c"
+        }
+      ]
+    },
+    "fix": {
+      "first_quarter_p95_median_ms": 88.732114,
+      "final_quarter_p95_median_ms": 89.499638,
+      "final_quarter_p95_range_ms": [
+        84.096428,
+        264.428576
+      ],
+      "runs": [
+        {
+          "path": "validated-run/fix/run-1.json",
+          "raw_sha256": "5f82f3366f6b8de8b4136e88a3f11f4265fcc77f7a6f343b1d969354166c246a",
+          "revision": "5defa1a66dcac8d136a1de6252055f853e96292b",
+          "first_quarter_p95_ms": 95.060276,
+          "final_quarter_p95_ms": 89.499638,
+          "pacing_error_p95_ms": 1.08135,
+          "automatic_silence_planned": 20,
+          "received_pcm_frames": 1520,
+          "paired_real_pcm_frames": 1500,
+          "pcm_rms": 0.00876263127005621,
+          "input_payload_sha256": "f1345cffde425b8e7f86cfb2a54f57951164c70c06da631014b03c21b700189c"
+        },
+        {
+          "path": "validated-run/fix/run-2.json",
+          "raw_sha256": "4da2f4f8783b4f5d48da9cb3465833d7f2b94b52bce2421ad4e6ea5eb161f61f",
+          "revision": "5defa1a66dcac8d136a1de6252055f853e96292b",
+          "first_quarter_p95_ms": 81.866437,
+          "final_quarter_p95_ms": 264.428576,
+          "pacing_error_p95_ms": 1.06669,
+          "automatic_silence_planned": 27,
+          "received_pcm_frames": 1527,
+          "paired_real_pcm_frames": 1500,
+          "pcm_rms": 0.009016316118785209,
+          "input_payload_sha256": "f1345cffde425b8e7f86cfb2a54f57951164c70c06da631014b03c21b700189c"
+        },
+        {
+          "path": "validated-run/fix/run-3.json",
+          "raw_sha256": "9c590ac299323e533f1b0ebf0ce7b5846f1f278bc8614c05d6b4ac88f8cf1a99",
+          "revision": "5defa1a66dcac8d136a1de6252055f853e96292b",
+          "first_quarter_p95_ms": 88.732114,
+          "final_quarter_p95_ms": 84.096428,
+          "pacing_error_p95_ms": 1.066121,
+          "automatic_silence_planned": 10,
+          "received_pcm_frames": 1510,
+          "paired_real_pcm_frames": 1500,
+          "pcm_rms": 0.010897818642921902,
+          "input_payload_sha256": "f1345cffde425b8e7f86cfb2a54f57951164c70c06da631014b03c21b700189c"
+        }
+      ]
+    }
+  },
+  "late_p95_ratio": 0.9765002960123704,
+  "verified_real_frames": 9000
+}

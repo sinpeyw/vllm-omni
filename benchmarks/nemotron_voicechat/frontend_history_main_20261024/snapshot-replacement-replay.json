@@ -1,0 +1,32 @@
+{
+  "scope": "Actual main payload merge/consolidation and snapshot helper; synthetic CPU prefixes; only replacement call toggled; no inference or service-latency claim.",
+  "main": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+  "introduced_by": "1c0bde507dfbffd25b32f6092dbe4526c945b7dd (#8758)",
+  "torch": "2.13.0+cu129",
+  "cpu_affinity": [
+    48
+  ],
+  "source_sha256": {
+    "mm_outputs.py": "f0bd2932349e74b53864fba308c71375e6e5af6fd1d26d481e18f209936ccfa9",
+    "multimodal_accumulation.py": "5da9c9b4afa58afd28542957f0ebb9b081d2ea52391567211a18b848ffdefedb",
+    "output_processor.py": "e4d751184943996e598ccc57acd8b5f6529059fc777623fc073733b27d0c1f48"
+  },
+  "current_main": {
+    "replacement_enabled": true,
+    "frames": 1500,
+    "retained_codec_elements": 46500,
+    "retained_codec_bytes": 372000,
+    "codec_concat_calls": 0,
+    "codec_concat_output_bytes": 0,
+    "replay_wall_s": 0.2970419529992796
+  },
+  "same_code_without_replacement_call": {
+    "replacement_enabled": false,
+    "frames": 1500,
+    "retained_codec_elements": 34898250,
+    "retained_codec_bytes": 279186000,
+    "codec_concat_calls": 1499,
+    "codec_concat_output_bytes": 139779123752,
+    "replay_wall_s": 88.05336412100041
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "measurement_functions_ast_identical": true,
+  "observer_byte_identical": true,
+  "changes": [
+    "Writable RAM cache and bytecode settings for full root filesystem",
+    "Available localhost port",
+    "30-second pre-test idle observation instead of historical four-minute waiting condition"
+  ],
+  "config_sha256": "664f305c7667661aa3791613db64f48fcd6ba3fe4b4b359693ae2dd69d393bfa",
+  "second_attempt_setup": "/root/share/rtserve-experiments/voicechat-frontend-pr8688-main-20261024-91dnsvvw/validated-run/setup.json",
+  "environment_correction": "Standard flashinfer-python 0.7.0.post1 core-only installation in an independent venv; optional flashinfer-cubin and flashinfer-jit-cache omitted; runtime JIT compilation excluded before pilot, warmup and formal trials; no version checks disabled."
+}

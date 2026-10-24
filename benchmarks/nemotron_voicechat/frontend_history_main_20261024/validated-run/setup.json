@@ -1,0 +1,43 @@
+{
+  "folder": "/root/share/rtserve-experiments/voicechat-frontend-pr8688-main-20261024-91dnsvvw/validated-run",
+  "short_tmp": "/dev/shm/vc8688-k3av7tq6/tmp-validated",
+  "base_checkout": "/dev/shm/vc8688-k3av7tq6/base-main",
+  "fix_checkout": "/dev/shm/vc8688-k3av7tq6/fix-on-main",
+  "base": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+  "fix": "5defa1a66dcac8d136a1de6252055f853e96292b",
+  "model": "/dev/shm/vc8688-k3av7tq6/model",
+  "tokenizer": "/root/share/models/NVIDIA-Nemotron-Nano-9B-v2-tokenizer",
+  "audio": {
+    "rate": 24000,
+    "channels": 2,
+    "width": 2,
+    "samples": 985920,
+    "duration_s": 41.08,
+    "sha256": "9602d5f78799644964b631e632c5740c325d518847cbb1ffb8917dee7abd17c1"
+  },
+  "gpu_snapshot_before": "0, GPU-48bfce1e-ea20-abcf-5b31-6c1444d06380, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n1, GPU-1b785b31-4885-f3ca-2c53-924e3f9a404b, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n2, GPU-7ca0db16-5a69-5d8d-1122-e963741df7d4, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n3, GPU-2d781693-cada-e5d2-7975-a46d14ee8c2c, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n4, GPU-95787a56-2661-f44c-c436-5458df4c04ad, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n5, GPU-2649b690-1308-360e-e57a-311f6db610e9, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n6, GPU-6238fbba-c2fc-bf12-2f81-b174b242a5d3, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n7, GPU-ba9b950c-0354-c036-31ef-3377ff6247a3, NVIDIA A800-SXM4-80GB, 0 MiB, 0 %\n",
+  "gpu": 7,
+  "interpreter": "/root/share/rtserve-experiments/voicechat-frontend-pr8688-main-20261024-91dnsvvw/.venv-core/bin/python",
+  "planned_metrics": [
+    "Client E2E RTF: (last real-input-corresponding PCM arrival - first real-input send) / corresponding decoded PCM duration",
+    "Final-quarter external input-send to corresponding PCM-arrival P95"
+  ],
+  "planned_frames": 1500,
+  "frame_period_s": 0.08,
+  "planned_repeats_per_arm": 3,
+  "cpu_threads": 4,
+  "real_time_input": true,
+  "single_session": true,
+  "max_simultaneous_owned_gpus": 1,
+  "compiled_cache": "/dev/shm/vc8688-k3av7tq6/cache",
+  "observation": "Identical read-only append/PCM ledger in both arms; match external input through source_input_seq and PCM SHA256, exclude automatic silence frames from real-input latency and RTF denominator.",
+  "gpu_quiet_period_s": 30,
+  "prior_attempt": "/root/share/rtserve-experiments/voicechat-frontend-pr8688-main-20261024-91dnsvvw",
+  "prior_attempt_excluded_reason": "Service initialization failed before pilot/formal measurement with mismatched inherited FlashInfer optional packages. New task-only virtualenv uses the required 0.7.0.post1 core, with optional AOT/cubin packages absent; standard JIT caches are warmed before measured sessions.",
+  "current_main_rerun": true,
+  "original_harness_sha256": "6449cdd5add8ab9e2b572c762347dadf5e23ce36fb66512560ac422c2c1b6b64",
+  "original_observer_sha256": "ccdc1e8ce56ce892e92e13530420ba9cb00385dc4bd70c9887d340288db1307d",
+  "public_pr_head": "a1c92987e4ae9c0beefd6e060369b7a03b41379e",
+  "port": 45445,
+  "stock_config_sha256": "664f305c7667661aa3791613db64f48fcd6ba3fe4b4b359693ae2dd69d393bfa"
+}

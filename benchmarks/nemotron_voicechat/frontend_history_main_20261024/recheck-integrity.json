@@ -1,0 +1,43 @@
+{
+  "measurement_function_AST": [
+    {
+      "name": "save",
+      "identical_AST": true
+    },
+    {
+      "name": "p95",
+      "identical_AST": true
+    },
+    {
+      "name": "LedgerReader",
+      "identical_AST": true
+    },
+    {
+      "name": "pair_frames",
+      "identical_AST": true
+    },
+    {
+      "name": "measure",
+      "identical_AST": true
+    },
+    {
+      "name": "run_arm",
+      "identical_AST": true
+    },
+    {
+      "name": "gpu_usage",
+      "identical_AST": true
+    },
+    {
+      "name": "check_gpu_cap",
+      "identical_AST": true
+    },
+    {
+      "name": "other_scheduler_experiments",
+      "identical_AST": true
+    }
+  ],
+  "observer_identical_bytes": true,
+  "compressed_archives_match_originals": true,
+  "formal_frames_verified": 9000
+}

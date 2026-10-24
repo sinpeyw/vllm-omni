@@ -1,0 +1,10 @@
+{
+  "label": "base",
+  "head": "9bc166cd556cdaa4e0b18543da0c2def0076275e",
+  "sources": {
+    "vllm_omni/worker/gpu_ar_model_runner.py": "e80a654643820cfb7fc8f808e28fb0755c56fb9eda1092251c63030d2af880f0",
+    "vllm_omni/model_executor/models/nemotron_voicechat/nemotron_voicechat_talker.py": "d1c03350e3d9eec7139bfbe4a261e9d350826518754b377c53b6a6cc257647ab",
+    "tests/worker/test_gpu_ar_model_runner.py": "29a98a0f5a140122967e0f7df96ba17e0eec6e357e1bb5e32cb3891214477ab0",
+    "vllm_omni/deploy/nemotron_labs_voicechat_duplex.yaml": "664f305c7667661aa3791613db64f48fcd6ba3fe4b4b359693ae2dd69d393bfa"
+  }
+}
