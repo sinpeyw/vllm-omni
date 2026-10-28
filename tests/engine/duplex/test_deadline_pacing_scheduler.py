@@ -398,12 +398,14 @@ async def test_decoding_audio_blocks_silence_until_handled(monkeypatch, invalid_
     try:
         h.submit(append_audio())
         await asyncio.wait_for(entered.wait(), timeout=2)
-        assert h.session.pending_input_bytes == 0
+        # Wire bytes stay reserved until preprocessing finishes.
+        assert h.session.pending_input_bytes == 64_000
         assert not h.runner.model_state.audio_buffer.has_pending()
         assert not h.runner.model_state.audio_buffer.has_reserved()
         assert h.runner._real_input_waiting()
         release.set()
         await h.settle()
+        assert h.session.pending_input_bytes == 0
         assert not h.runner._real_input_waiting()
     finally:
         release.set()
