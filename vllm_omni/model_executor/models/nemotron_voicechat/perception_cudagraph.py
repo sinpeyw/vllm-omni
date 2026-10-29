@@ -49,6 +49,8 @@ def perception_step(perception: AudioPerceptionModule, mel: torch.Tensor, caches
 
 
 def _copy_exact(target: torch.Tensor, source: torch.Tensor) -> None:
+    if target.shape != source.shape:
+        raise ValueError(f"VoiceChat perception buffer shape mismatch: {target.shape} != {source.shape}")
     target.copy_(source)
 
 
@@ -109,6 +111,7 @@ class _PerceptionEncoder(SupportsEncoderCudaGraph):
             **{key: torch.zeros_like(cache) for key, cache in zip(_INPUT_KEYS[1:], self.caches)},
         }
         outputs = (torch.empty_like(values["valid"]), *(torch.empty_like(values[key]) for key in _INPUT_KEYS[1:]))
+        # Capture replaces eager buffers; run() gives callers private copies of state.
         self.outputs[phase] = outputs
         values.update(zip(_OUTPUT_KEYS, outputs))
         return EncoderCudaGraphCaptureInputs(values=values)
@@ -123,7 +126,7 @@ class _PerceptionEncoder(SupportsEncoderCudaGraph):
         caches = inputs["channel"], inputs["time"], inputs["valid"]
         frame = perception_step(self.perception, inputs["mel"], caches, drop)
         for key, output in zip(_OUTPUT_KEYS, frame[1:]):
-            inputs[key].copy_(output)
+            _copy_exact(inputs[key], output)
         return frame[0]
 
     def encoder_eager_forward(self, mm_kwargs: dict[str, object], path: str = "default") -> torch.Tensor:
@@ -138,7 +141,7 @@ class _PerceptionEncoder(SupportsEncoderCudaGraph):
             self.outputs[phase] = outputs
         # Preserve the buffers that later graph replays write into.
         for target, output in zip(outputs, frame[1:]):
-            target.copy_(output)
+            _copy_exact(target, output)
         return frame[0]
 
     def postprocess_encoder_output(

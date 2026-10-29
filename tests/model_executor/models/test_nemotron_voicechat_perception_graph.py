@@ -61,8 +61,8 @@ def perception():
     return model.eval()
 
 
-def _caches():
-    return torch.zeros(1, 1, 2, 2), torch.zeros(1, 1, 2, 1), torch.zeros(1, dtype=torch.long)
+def _caches(batch_size=1):
+    return torch.zeros(1, batch_size, 2, 2), torch.zeros(1, batch_size, 2, 1), torch.zeros(batch_size, dtype=torch.long)
 
 
 class _CPUManager(EncoderCudaGraphManager):
@@ -158,6 +158,22 @@ def test_manager_eager_without_capture_owns_and_reuses_side_buffers(perception, 
     assert torch.equal(adapter.encoder_eager_forward(inputs), frame[0])
     assert all(target is saved for target, saved in zip(adapter.outputs[phase], buffers))
     assert all(torch.equal(target, source) for target, source in zip(buffers, frame[1:]))
+
+
+@pytest.mark.cpu
+def test_manager_eager_does_not_broadcast_between_batch_sizes(perception):
+    adapter = graphs._PerceptionEncoder(perception, ((1, 0), (3, 1)), _caches())
+    for batch in (2, 1):
+        inputs = {
+            "mel": torch.ones(batch, 2, 1),
+            "drop": 0,
+            **dict(zip(("channel", "time", "valid"), _caches(batch))),
+        }
+        if batch == 2:
+            adapter.encoder_eager_forward(inputs)
+        else:
+            with pytest.raises(ValueError, match="shape"):
+                adapter.encoder_eager_forward(inputs)
 
 
 @pytest.mark.cpu
@@ -392,6 +408,7 @@ def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch, force_ea
             replay_stream.wait_stream(capture_stream)
     assert all(bool((state[2] == state[0].shape[2]).all()) for state in states)
     stats = graph.get_cumulative_stats()
+    # Two streams at first/steady startup (2 + 2), then one miss after capture.
     misses = 5 if force_eager else 0
     assert stats["graph_hits"] == 2 * frame_count - misses
     assert stats["graph_misses"] == misses
