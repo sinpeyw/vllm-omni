@@ -130,7 +130,7 @@ class _PerceptionEncoder(SupportsEncoderCudaGraph):
         mel = cast(torch.Tensor, mm_kwargs["mel"])
         caches = cast(Cache, tuple(mm_kwargs[key] for key in _INPUT_KEYS[1:]))
         frame = perception_step(self.perception, mel, caches, cast(int, mm_kwargs["drop"]))
-        outputs = self.outputs.setdefault(self.phase(mm_kwargs), frame[1:])
+        outputs = self.outputs[self.phase(mm_kwargs)]
         # Preserve the buffers that later graph replays write into.
         for target, output in zip(outputs, frame[1:]):
             target.copy_(output)

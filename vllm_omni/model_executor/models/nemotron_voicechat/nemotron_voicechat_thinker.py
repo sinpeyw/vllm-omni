@@ -1106,7 +1106,10 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
     # Weights.
     # ------------------------------------------------------------------
     def capture_auxiliary_graphs(self) -> None:
-        """Capture during worker profiling and warmup so the pool enters the KV budget."""
+        """Capture through OmniGPUWorkerBase profiling and compile/warmup hooks.
+
+        The worker also calls this when skipping main-model capture; the factory still checks eligibility.
+        """
         if self._perception_graph is not None:
             return
         streaming = self.perception.encoder.streaming_cfg
@@ -1120,7 +1123,7 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         self._perception_graph = make_perception_graph(self.perception, self.vllm_config, phases)
 
     def release_auxiliary_graphs(self) -> None:
-        """Release the worker's temporary memory-profiling captures."""
+        """Release outside active decoding, during worker profiling or weight loading."""
         self._perception_graph = None
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
@@ -1135,6 +1138,11 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         * ``stt_model.perception.*`` -> the vendored Conformer.
         * everything else (``rnnt_*``, ``tts_model.*``) is skipped lazily.
         """
+        if self._perception_graph is not None:
+            logger.warning_once(
+                "VoiceChat weight loading releases perception CUDA graphs; "
+                "call capture_auxiliary_graphs() after loading and processing weights to restore replay."
+            )
         self.release_auxiliary_graphs()
         loaded: set[str] = set()
         lm_weights: list[tuple[str, torch.Tensor]] = []

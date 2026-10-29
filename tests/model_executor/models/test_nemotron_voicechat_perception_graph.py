@@ -262,6 +262,9 @@ def test_worker_capture_uses_loaded_weights_and_actual_streaming_phases(monkeypa
     model._dtype, model._use_function_head = torch.float32, True
     model._w_text = model._w_audio = model._w_func = 1.0
     model.vllm_config = _config("cpu")
+    model._perception_graph = None
+    reload_warnings: list[str] = []
+    monkeypatch.setattr(thinker_module.logger, "warning_once", reload_warnings.append)
     monkeypatch.setattr(
         model.language_model, "load_weights", lambda weights: {key for key, _ in weights}, raising=False
     )
@@ -282,6 +285,7 @@ def test_worker_capture_uses_loaded_weights_and_actual_streaming_phases(monkeypa
     ]
     model.load_weights(iter(weights))
     assert model._perception_graph is None and not captured
+    assert not reload_warnings
     model.capture_auxiliary_graphs()
     assert model._perception_graph is sentinel
     model.capture_auxiliary_graphs()
@@ -296,6 +300,9 @@ def test_worker_capture_uses_loaded_weights_and_actual_streaming_phases(monkeypa
     assert model._perception_graph is sentinel and len(captured) == 2
     model.load_weights(iter(weights))
     assert model._perception_graph is None
+    assert len(reload_warnings) == 1 and "capture_auxiliary_graphs" in reload_warnings[0]
+    model.capture_auxiliary_graphs()
+    assert model._perception_graph is sentinel and len(captured) == 3
 
 
 @hardware_test(res={"cuda": "L4"}, num_cards=1)
