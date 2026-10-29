@@ -72,6 +72,7 @@ class _DecodeRequest:
     codes: torch.Tensor
     cache: CausalConv1dCache | None
     left_context_frames: int
+    request_id: str | None
 
 
 def validate_code_stack(codes: torch.Tensor, num_quantizers: int, codebook_size: int) -> torch.Tensor:
@@ -267,10 +268,19 @@ class NemotronVoiceChatCode2Wav(nn.Module):
                 # left context carried in the per-request cache.
                 codec_cache = self._stream_caches.setdefault(request_id, CausalConv1dCache())
                 decode_codes = codes[left_context_frames:]
-            requests.append(_DecodeRequest(i, decode_codes, codec_cache, left_context_frames))
+            requests.append(
+                _DecodeRequest(
+                    i,
+                    decode_codes,
+                    codec_cache,
+                    left_context_frames,
+                    cache_request_id if isinstance(cache_request_id, str) else request_id,
+                )
+            )
 
-        # Requests sharing one stream cache must advance in input order, even
-        # when their frame counts differ. Keep that uncommon case serial.
+        # A shared cache needs input order across frame counts. Conservatively
+        # keep the whole step serial if any cache repeats; independent caches
+        # can otherwise group freely because results use their original index.
         cache_ids = [id(request.cache) for request in requests if request.cache is not None]
         serial = len(cache_ids) != len(set(cache_ids))
         groups: dict[tuple[int, bool, int | None], list[_DecodeRequest]] = {}
@@ -299,6 +309,12 @@ class NemotronVoiceChatCode2Wav(nn.Module):
                 # Trim on the device before copying: prefix re-decode must
                 # never transfer already-emitted audio back to the client.
                 audios[request.index] = audio.detach().to(dtype=torch.float32).cpu()
+                logger.debug(
+                    "Nemotron VoiceChat code2wav output: request=%s frames=%s samples=%s",
+                    request.request_id,
+                    request.codes.shape[0],
+                    audios[request.index].numel(),
+                )
 
         return OmniOutput(
             text_hidden_states=None,
