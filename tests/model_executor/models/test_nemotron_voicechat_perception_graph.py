@@ -138,7 +138,7 @@ def test_equal_mel_widths_still_select_by_drop(perception):
 
 @pytest.mark.cpu
 @pytest.mark.parametrize("phase", [(1, 0), (3, 1)])
-def test_manager_eager_rejects_uncaptured_phase(perception, phase):
+def test_manager_eager_without_capture_owns_and_reuses_side_buffers(perception, phase, monkeypatch):
     adapter = graphs._PerceptionEncoder(perception, ((1, 0), (3, 1)), _caches())
     width, drop = phase
     inputs = {
@@ -146,8 +146,18 @@ def test_manager_eager_rejects_uncaptured_phase(perception, phase):
         "drop": drop,
         **dict(zip(("channel", "time", "valid"), _caches())),
     }
-    with pytest.raises(RuntimeError, match="has no captured buffers"):
-        adapter.encoder_eager_forward(inputs)
+    frame = graphs.perception_step(perception, inputs["mel"], _caches(), drop)
+    monkeypatch.setattr(graphs, "perception_step", lambda *args: frame)
+    assert torch.equal(adapter.encoder_eager_forward(inputs), frame[0])
+    buffers = adapter.outputs[phase]
+    assert all(torch.equal(target, source) for target, source in zip(buffers, frame[1:]))
+    snapshot = tuple(value.clone() for value in buffers)
+    for value in frame[1:]:
+        value.add_(1)
+    assert all(torch.equal(value, saved) for value, saved in zip(buffers, snapshot))
+    assert torch.equal(adapter.encoder_eager_forward(inputs), frame[0])
+    assert all(target is saved for target, saved in zip(adapter.outputs[phase], buffers))
+    assert all(torch.equal(target, source) for target, source in zip(buffers, frame[1:]))
 
 
 @pytest.mark.cpu
@@ -281,7 +291,9 @@ def test_worker_capture_uses_loaded_weights_and_actual_streaming_phases(monkeypa
     model._perception_graph = None
     reload_warnings: list[str] = []
     monkeypatch.setattr(
-        thinker_module.logger, "warning_once", lambda message, *args, **kwargs: reload_warnings.append(message)
+        thinker_module.logger,
+        "warning_once",
+        lambda message, *args, **kwargs: reload_warnings.append(message % args if args else message),
     )
     monkeypatch.setattr(
         model.language_model, "load_weights", lambda weights: {key for key, _ in weights}, raising=False
@@ -340,11 +352,15 @@ def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch, force_ea
     replay_stream = torch.cuda.current_stream()
     # Reproduce weight loading before vLLM has cached a stream on this thread.
     monkeypatch.setattr(torch_utils._current_stream_tls, "value", None, raising=False)
-    graph = graphs.make_perception_graph(perception, _config("cuda"), tuple(phases))
+    with monkeypatch.context() as patch:
+        if force_eager:
+            patch.setattr(EncoderCudaGraphManager, "capture", lambda *args, **kwargs: None)
+        graph = graphs.make_perception_graph(perception, _config("cuda"), tuple(phases))
     assert graph is not None
     assert torch.cuda.current_stream() == replay_stream
     assert graph.stream == replay_stream
     assert graph.manager.path_token_budgets == {"default": [0, 1], "steady": [0, 1]}
+    assert bool(graph.adapter.outputs) is not force_eager
     states = [perception.encoder.get_initial_cache_state(1, torch.float32, torch.device("cuda")) for _ in range(2)]
     references = [tuple(value.clone() for value in caches) for caches in states]
     generator = torch.Generator(device="cuda").manual_seed(123)
@@ -356,7 +372,7 @@ def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch, force_ea
         for row in (0, 1) if index % 2 else (1, 0):
             mel = torch.randn(1, 8, width, generator=generator, device="cuda")
             with monkeypatch.context() as patch:
-                if force_eager and row == 0 and index in (0, 1):
+                if force_eager and (index < 2 or (index == 2 and row == 0)):
                     patch.setattr(graph.manager, "_path_fitting_budget", lambda path, tokens: None)
                 actual = graph.run(mel, states[row], drop)
             assert torch.cuda.current_stream() == replay_stream
@@ -367,9 +383,16 @@ def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch, force_ea
             if saved is None:
                 saved, saved_copy = actual, tuple(value.clone() for value in actual)
             assert all(torch.equal(value, copy) for value, copy in zip(saved, saved_copy))
+        if force_eager and index == 1:
+            # Eager first/steady phases must also survive subsequent real capture.
+            capture_stream = torch.cuda.Stream()
+            capture_stream.wait_stream(replay_stream)
+            with torch.cuda.stream(capture_stream):
+                graph.manager.capture(graph_pool=None)
+            replay_stream.wait_stream(capture_stream)
     assert all(bool((state[2] == state[0].shape[2]).all()) for state in states)
     stats = graph.get_cumulative_stats()
-    misses = 2 if force_eager else 0
+    misses = 5 if force_eager else 0
     assert stats["graph_hits"] == 2 * frame_count - misses
     assert stats["graph_misses"] == misses
     assert stats["ineligible_misses"] == 0

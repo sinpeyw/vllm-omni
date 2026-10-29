@@ -127,14 +127,15 @@ class _PerceptionEncoder(SupportsEncoderCudaGraph):
         return frame[0]
 
     def encoder_eager_forward(self, mm_kwargs: dict[str, object], path: str = "default") -> torch.Tensor:
-        # run() bypasses the manager for unknown phases; capture initializes every path.
         phase = self.phase(mm_kwargs)
         outputs = self.outputs.get(phase)
-        if outputs is None:
-            raise RuntimeError(f"VoiceChat perception phase {phase} has no captured buffers")
         mel = cast(torch.Tensor, mm_kwargs["mel"])
         caches = cast(Cache, tuple(mm_kwargs[key] for key in _INPUT_KEYS[1:]))
         frame = perception_step(self.perception, mel, caches, cast(int, mm_kwargs["drop"]))
+        if outputs is None:
+            # An uncaptured phase needs its own buffers, independent of eager outputs.
+            outputs = tuple(torch.empty_like(value) for value in frame[1:])
+            self.outputs[phase] = outputs
         # Preserve the buffers that later graph replays write into.
         for target, output in zip(outputs, frame[1:]):
             target.copy_(output)
@@ -187,6 +188,7 @@ class PerceptionCudaGraph:
             return "autocast"
         if self.perception.training:
             return "training"
+        # Both mel width and drop select the phase's capture geometry.
         if (mel.shape[-1], drop) not in self.adapter.phases:
             return "phase"
         if mel.shape[:2] != (1, self.perception.encoder._feat_in):
