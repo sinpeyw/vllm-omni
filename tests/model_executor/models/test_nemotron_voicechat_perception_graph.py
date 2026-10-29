@@ -137,8 +137,22 @@ def test_equal_mel_widths_still_select_by_drop(perception):
 
 
 @pytest.mark.cpu
+@pytest.mark.parametrize("phase", [(1, 0), (3, 1)])
+def test_manager_eager_rejects_uncaptured_phase(perception, phase):
+    adapter = graphs._PerceptionEncoder(perception, ((1, 0), (3, 1)), _caches())
+    width, drop = phase
+    inputs = {
+        "mel": torch.ones(1, 2, width),
+        "drop": drop,
+        **dict(zip(("channel", "time", "valid"), _caches())),
+    }
+    with pytest.raises(RuntimeError, match="has no captured buffers"):
+        adapter.encoder_eager_forward(inputs)
+
+
+@pytest.mark.cpu
 @pytest.mark.parametrize(
-    "reason", ["phase", "shape", "stream", "autocast", "training", "device", "dtype", "cache", "grad_enabled"]
+    "reason", ["phase", "drop", "shape", "stream", "autocast", "training", "device", "dtype", "cache", "grad_enabled"]
 )
 def test_runtime_ineligible_frame_stays_eager(perception, monkeypatch, reason):
     warnings = []
@@ -155,6 +169,7 @@ def test_runtime_ineligible_frame_stays_eager(perception, monkeypatch, reason):
     )
     monkeypatch.setattr(torch, "is_autocast_enabled", lambda device: reason == "autocast")
     mel = torch.ones(1, 2, 2 if reason == "phase" else 1)
+    drop = 2 if reason == "drop" else 0
     caches = _caches()
     if reason == "training":
         perception.train()
@@ -168,15 +183,16 @@ def test_runtime_ineligible_frame_stays_eager(perception, monkeypatch, reason):
     elif reason == "cache":
         graph.adapter.caches = tuple(cache.to(torch.float64) for cache in caches)
     with torch.set_grad_enabled(reason == "grad_enabled"):
-        actual = graph.run(mel, caches, 0)
-        graph.run(mel, caches, 0)
-        expected = graphs.perception_step(perception, mel, caches, 0)
+        actual = graph.run(mel, caches, drop)
+        graph.run(mel, caches, drop)
+        expected = graphs.perception_step(perception, mel, caches, drop)
     assert all(torch.equal(a, b) for a, b in zip(actual, expected))
     assert graph.manager.calls == 0
     stats = graph.get_cumulative_stats()
     assert stats["graph_hits"] == 0
     assert stats["graph_misses"] == stats["ineligible_misses"] == 2 * mel.shape[0]
-    assert stats["fallback_reasons"] == {reason: 2 * mel.shape[0]}
+    fallback_reason = "phase" if reason == "drop" else reason
+    assert stats["fallback_reasons"] == {fallback_reason: 2 * mel.shape[0]}
     assert stats["hit_rate"] == 0.0
     assert len(warnings) == 1
 
@@ -264,7 +280,9 @@ def test_worker_capture_uses_loaded_weights_and_actual_streaming_phases(monkeypa
     model.vllm_config = _config("cpu")
     model._perception_graph = None
     reload_warnings: list[str] = []
-    monkeypatch.setattr(thinker_module.logger, "warning_once", reload_warnings.append)
+    monkeypatch.setattr(
+        thinker_module.logger, "warning_once", lambda message, *args, **kwargs: reload_warnings.append(message)
+    )
     monkeypatch.setattr(
         model.language_model, "load_weights", lambda weights: {key for key, _ in weights}, raising=False
     )
