@@ -296,3 +296,108 @@ def test_missing_cache_does_not_commit_any_batch_row(thinker):
     assert broken["last_input_seq"] == 1
     for key in CACHE_KEYS:
         assert torch.equal(healthy[key], before[key])
+
+
+@pytest.mark.parametrize("fault", ["sequence", "payload", "runtime", "prompt", "function", "pad"])
+def test_invalid_first_batch_does_not_publish_sessions(thinker, fault):
+    packet = append(1, 1)
+    if fault == "sequence":
+        del packet["source_input_seq"]
+    elif fault == "payload":
+        packet["payload"]["audio"] = ""
+    elif fault == "runtime":
+        del packet["runtime_config"]
+    elif fault == "prompt":
+        del packet["runtime_config"]["nvc_prompt_token_ids"]
+    elif fault == "function":
+        del packet["runtime_config"]["nvc_function_sotc_id"]
+    else:
+        del packet["runtime_config"]["nvc_text_pad_id"]
+    buffer = {"good": {"duplex": append(0, 1)}, "bad": {"duplex": packet}}
+    with pytest.raises(ValueError):
+        thinker.preprocess_batch(req_ids=list(buffer), model_intermediate_buffer=buffer, device=DEVICE)
+    assert not thinker._sessions
+
+
+def test_invalid_existing_runtime_does_not_advance_batch(thinker):
+    buffer = {request: {"duplex": append(row, 1)} for row, request in enumerate(("a", "b"))}
+    thinker.preprocess_batch(req_ids=list(buffer), model_intermediate_buffer=buffer, device=DEVICE)
+    before = {request: {key: state[key].clone() for key in CACHE_KEYS} for request, state in thinker._sessions.items()}
+    buffer = {request: {"duplex": append(row, 2)} for row, request in enumerate(("a", "b"))}
+    del buffer["b"]["duplex"]["runtime_config"]["nvc_text_pad_id"]
+    with pytest.raises(ValueError, match="metadata is incomplete"):
+        thinker.preprocess_batch(req_ids=list(buffer), model_intermediate_buffer=buffer, device=DEVICE)
+    for request, state in thinker._sessions.items():
+        assert state["last_input_seq"] == 1
+        for key in CACHE_KEYS:
+            assert torch.equal(state[key], before[request][key])
+
+
+def test_duplicate_request_does_not_publish_a_session(thinker):
+    with pytest.raises(ValueError, match="duplicate session"):
+        thinker.preprocess_batch(
+            req_ids=["a", "a"], model_intermediate_buffer={"a": {"duplex": append(0, 1)}}, device=DEVICE
+        )
+    assert not thinker._sessions
+
+
+@pytest.mark.parametrize("fault", ["length", "oom"])
+def test_later_encoder_group_failure_preserves_sessions_for_retry(thinker, monkeypatch, fault):
+    thinker.preprocess_batch(
+        req_ids=["old"], model_intermediate_buffer={"old": {"duplex": append(0, 1)}}, device=DEVICE
+    )
+    session = thinker._sessions["old"]
+    before = {key: session[key].clone() for key in (*CACHE_KEYS, "duplex_frame", "duplex_audio")}
+    original = thinker.perception.encoder.cache_aware_stream_step
+    calls = 0
+
+    def fail_second(**kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            if fault == "oom":
+                raise torch.OutOfMemoryError("injected second encoder group failure")
+            encoded, length, *caches = original(**kwargs)
+            return encoded, length + 1, *caches
+        return original(**kwargs)
+
+    buffer = {"old": {"duplex": append(0, 2)}, "new": {"duplex": append(1, 1)}}
+    with monkeypatch.context() as patch:
+        patch.setattr(thinker.perception.encoder, "cache_aware_stream_step", fail_second)
+        with pytest.raises(RuntimeError):
+            thinker.preprocess_batch(req_ids=list(buffer), model_intermediate_buffer=buffer, device=DEVICE)
+    assert calls == 2
+    assert session["last_input_seq"] == 1
+    assert set(thinker._sessions) == {"old"}
+    for key, value in before.items():
+        assert torch.equal(session[key], value)
+    thinker.preprocess_batch(req_ids=list(buffer), model_intermediate_buffer=buffer, device=DEVICE)
+    assert thinker._sessions["old"] is session
+    assert session["last_input_seq"] == 2
+    assert thinker._sessions["new"]["last_input_seq"] == 1
+    thinker.on_requests_finished(set(buffer))
+    assert not thinker._sessions
+
+
+def test_failed_prompt_fusion_preserves_prompt_for_retry(thinker, monkeypatch):
+    packet = append(0, 1)
+    thinker.preprocess_batch(req_ids=["a"], model_intermediate_buffer={"a": {"duplex": packet}}, device=DEVICE)
+    session = thinker._sessions["a"]
+    prompt_ids = session["prompt_ids"]
+
+    def fail_fusion(*args):
+        raise RuntimeError("injected prompt fusion failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(thinker, "_fuse", fail_fusion)
+        with pytest.raises(RuntimeError, match="injected prompt fusion"):
+            thinker._preprocess_duplex(
+                request_id="a", input_ids=torch.zeros(3, dtype=torch.long), info={}, duplex=packet
+            )
+    assert session["prompt_ids"] is prompt_ids
+    assert "prefill_embeds" not in session
+    _, embeds, _ = thinker._preprocess_duplex(
+        request_id="a", input_ids=torch.zeros(3, dtype=torch.long), info={}, duplex=packet
+    )
+    assert embeds.shape == (3, thinker._hidden)
+    assert "prompt_ids" not in session

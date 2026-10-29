@@ -600,7 +600,7 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
     def _get_duplex_session(
         self, request_id: str, runtime_config: dict[str, Any], device: torch.device
     ) -> dict[str, Any]:
-        """Get request-local state, leaving prompt fusion to the scalar path."""
+        """Return existing state or new state for the caller to publish on success."""
         session = self._sessions.get(request_id)
         if session is not None:
             return session
@@ -629,7 +629,6 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
             "function_response_generation": 0,
             "forced_function_tokens": [],
         }
-        self._sessions[request_id] = session
         return session
 
     def preprocess_batch(
@@ -641,6 +640,7 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
     ) -> None:
         """Prepare new duplex acoustic frames before the runner's scalar fusion."""
         entries = []
+        sessions = {}
         for request_id in req_ids:
             info = model_intermediate_buffer.get(request_id)
             if not isinstance(info, dict):
@@ -651,9 +651,17 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
             runtime_config = duplex.get("runtime_config")
             if not isinstance(runtime_config, dict):
                 raise ValueError("Nemotron VoiceChat duplex input lacks runtime_config")
+            try:
+                int(runtime_config["nvc_text_pad_id"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("Nemotron VoiceChat duplex runtime token metadata is incomplete") from exc
+            if request_id in sessions:
+                raise ValueError("Nemotron VoiceChat perception batch contains a duplicate session")
             session = self._get_duplex_session(request_id, runtime_config, device)
+            sessions[request_id] = session
             entries.append((session, duplex))
         self._duplex_stable_frames(entries, device)
+        self._sessions.update(sessions)
 
     def _duplex_stable_frame(
         self,
@@ -712,6 +720,7 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
                 )
                 encoder_groups[(mel.shape[-1], drop)].append((frame, mel))
 
+        pending_updates = []
         for (_, drop), group in encoder_groups.items():
             frames, chunks = zip(*group)
             # NeMo caches are [layers, batch, ...]; their valid lengths are [batch].
@@ -742,16 +751,24 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
             for row, frame in enumerate(frames):
                 # Own each row's storage so a paused session neither retains
                 # other sessions' caches nor aliases a subsequent batch.
-                frame.session.update(
-                    duplex_audio=frame.audio,
-                    duplex_seq_base=frame.seq_base,
-                    duplex_window_col0=frame.window_col0,
-                    perception_cache_last_channel=channel[:, row : row + 1].clone(),
-                    perception_cache_last_time=time[:, row : row + 1].clone(),
-                    perception_cache_last_channel_len=channel_len[row : row + 1].clone(),
-                    duplex_frame=stable[row].clone(),
-                    last_input_seq=frame.source_input_seq,
+                pending_updates.append(
+                    (
+                        frame.session,
+                        dict(
+                            duplex_audio=frame.audio,
+                            duplex_seq_base=frame.seq_base,
+                            duplex_window_col0=frame.window_col0,
+                            perception_cache_last_channel=channel[:, row : row + 1].clone(),
+                            perception_cache_last_time=time[:, row : row + 1].clone(),
+                            perception_cache_last_channel_len=channel_len[row : row + 1].clone(),
+                            duplex_frame=stable[row].clone(),
+                            last_input_seq=frame.source_input_seq,
+                        ),
+                    )
                 )
+        # A failed group must leave every session ready to retry the same input.
+        for session, updates in pending_updates:
+            session.update(updates)
 
     def _prepare_perception_frame(
         self,
@@ -851,7 +868,7 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         session = self._get_duplex_session(request_id, runtime_config, device)
         frame = self._duplex_stable_frame(session, duplex, device)
         if "prefill_embeds" not in session:
-            prompt_ids = session.pop("prompt_ids")
+            prompt_ids = session["prompt_ids"]
             timeline = torch.cat(
                 [self.embed_tokens(prompt_ids).to(self._dtype), frame],
                 dim=0,
@@ -863,6 +880,8 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
                 device=device,
             )
             session["prefill_embeds"] = self._fuse(pad_ids, timeline, pad_ids)
+            del session["prompt_ids"]
+        self._sessions[request_id] = session
         if self._use_function_head:
             self._sync_forced_function_response(session, runtime_config)
 
