@@ -249,7 +249,7 @@ def _config(device):
 
 
 @pytest.mark.cpu
-def test_weight_loading_activates_graph_with_actual_streaming_phases(monkeypatch):
+def test_worker_capture_uses_loaded_weights_and_actual_streaming_phases(monkeypatch):
     model = thinker_module.NemotronVoiceChatThinkerForConditionalGeneration.__new__(
         thinker_module.NemotronVoiceChatThinkerForConditionalGeneration
     )
@@ -281,18 +281,28 @@ def test_weight_loading_activates_graph_with_actual_streaming_phases(monkeypatch
         *[(f"stt_model.perception.{key}", value.clone()) for key, value in model.perception.state_dict().items()],
     ]
     model.load_weights(iter(weights))
+    assert model._perception_graph is None and not captured
+    model.capture_auxiliary_graphs()
     assert model._perception_graph is sentinel
+    model.capture_auxiliary_graphs()
     assert len(captured) == 1
     for index in (0, 1, 8):
         mel = torch.zeros(1, 8, 8 * (index + 1) + 1)
         chunk, drop = thinker_module.slice_perception_streaming_mel(mel, index, model.perception.encoder.streaming_cfg)
         assert captured[0][int(index > 0)] == (chunk.shape[-1], drop)
+    model.release_auxiliary_graphs()
+    assert model._perception_graph is None
+    model.capture_auxiliary_graphs()
+    assert model._perception_graph is sentinel and len(captured) == 2
+    model.load_weights(iter(weights))
+    assert model._perception_graph is None
 
 
 @hardware_test(res={"cuda": "L4"}, num_cards=1)
 @pytest.mark.nvidia_only
+@pytest.mark.parametrize("force_eager", [False, True])
 @torch.inference_mode()
-def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch):
+def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch, force_eager):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(42)
         perception = _small_perception().to("cuda")
@@ -320,7 +330,10 @@ def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch):
         width, drop = phases[int(index > 0)]
         for row in (0, 1) if index % 2 else (1, 0):
             mel = torch.randn(1, 8, width, generator=generator, device="cuda")
-            actual = graph.run(mel, states[row], drop)
+            with monkeypatch.context() as patch:
+                if force_eager and row == 0 and index in (0, 1):
+                    patch.setattr(graph.manager, "_path_fitting_budget", lambda path, tokens: None)
+                actual = graph.run(mel, states[row], drop)
             assert torch.cuda.current_stream() == replay_stream
             expected = graphs.perception_step(perception, mel, references[row], drop)
             for result, reference in zip(actual, expected):
@@ -331,5 +344,7 @@ def test_cuda_manager_replays_interleaved_sessions_exactly(monkeypatch):
             assert all(torch.equal(value, copy) for value, copy in zip(saved, saved_copy))
     assert all(bool((state[2] == state[0].shape[2]).all()) for state in states)
     stats = graph.get_cumulative_stats()
-    assert stats["graph_hits"] == 2 * frame_count
-    assert stats["graph_misses"] == stats["ineligible_misses"] == 0
+    misses = 2 if force_eager else 0
+    assert stats["graph_hits"] == 2 * frame_count - misses
+    assert stats["graph_misses"] == misses
+    assert stats["ineligible_misses"] == 0

@@ -301,14 +301,13 @@ async def test_small_wakeup_delay_preserves_planned_deadline(
 
 
 @pytest.mark.asyncio
-async def test_exact_one_period_late_preserves_planned_deadline(
+@pytest.mark.parametrize(("delay", "next_offset"), [(1.0, 2.005), (1.001, 3.006)])
+async def test_initial_grace_stale_restart_boundary(
     monkeypatch: pytest.MonkeyPatch,
+    delay: float,
+    next_offset: float,
 ) -> None:
-    """Exactly one period late is not "more than one period late".
-
-    The strict ``>`` comparison means a submission exactly at the planned
-    following deadline keeps the planned cadence (no extra catch-up unit).
-    """
+    """The initial grace belongs to the deadline used for stale detection."""
     clock = FakeClock(start=500.0)
     real_sleep = asyncio.sleep
     stall = _install_fake_clock(monkeypatch, clock=clock, real_sleep=real_sleep)
@@ -318,7 +317,7 @@ async def test_exact_one_period_late_preserves_planned_deadline(
         anchor = clock.value
         state.last_native_submit_monotonic = anchor
         state.silence_deadline_monotonic = None
-        stall[0] = 1.0
+        stall[0] = delay
 
         scheduled = await h.runner._schedule_silence_continuation(
             h.runner.model.silence_unit_payload(),
@@ -329,9 +328,8 @@ async def test_exact_one_period_late_preserves_planned_deadline(
         assert append_task is not None
         assert await append_task
 
-        # Submitted exactly at the planned following deadline: kept.
-        assert state.last_native_submit_monotonic == pytest.approx(anchor + 2 * CHUNK_PERIOD_S + 0.005)
-        assert state.silence_deadline_monotonic == pytest.approx(anchor + 2 * CHUNK_PERIOD_S + 0.005)
+        assert state.last_native_submit_monotonic == pytest.approx(anchor + CHUNK_PERIOD_S + 0.005 + delay)
+        assert state.silence_deadline_monotonic == pytest.approx(anchor + next_offset)
     finally:
         await close_harness(h)
 

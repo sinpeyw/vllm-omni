@@ -127,7 +127,14 @@ class _PerceptionEncoder(SupportsEncoderCudaGraph):
         return frame[0]
 
     def encoder_eager_forward(self, mm_kwargs: dict[str, object], path: str = "default") -> torch.Tensor:
-        raise RuntimeError("VoiceChat graph adapter accepts only its two captured frame geometries")
+        mel = cast(torch.Tensor, mm_kwargs["mel"])
+        caches = cast(Cache, tuple(mm_kwargs[key] for key in _INPUT_KEYS[1:]))
+        frame = perception_step(self.perception, mel, caches, cast(int, mm_kwargs["drop"]))
+        outputs = self.outputs.setdefault(self.phase(mm_kwargs), frame[1:])
+        # Preserve the buffers that later graph replays write into.
+        for target, output in zip(outputs, frame[1:]):
+            target.copy_(output)
+        return frame[0]
 
     def postprocess_encoder_output(
         self,

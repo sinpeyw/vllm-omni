@@ -1105,6 +1105,24 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
     # ------------------------------------------------------------------
     # Weights.
     # ------------------------------------------------------------------
+    def capture_auxiliary_graphs(self) -> None:
+        """Capture during worker profiling and warmup so the pool enters the KV budget."""
+        if self._perception_graph is not None:
+            return
+        streaming = self.perception.encoder.streaming_cfg
+        phases = (
+            (_streaming_cfg_at(streaming.chunk_size, 0) + _streaming_cfg_at(streaming.pre_encode_cache_size, 0), 0),
+            (
+                _streaming_cfg_at(streaming.chunk_size, 1) + _streaming_cfg_at(streaming.pre_encode_cache_size, 1),
+                int(streaming.drop_extra_pre_encoded),
+            ),
+        )
+        self._perception_graph = make_perception_graph(self.perception, self.vllm_config, phases)
+
+    def release_auxiliary_graphs(self) -> None:
+        """Release the worker's temporary memory-profiling captures."""
+        self._perception_graph = None
+
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
         """Route the unified checkpoint into the thinker's components.
 
@@ -1117,6 +1135,7 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         * ``stt_model.perception.*`` -> the vendored Conformer.
         * everything else (``rnnt_*``, ``tts_model.*``) is skipped lazily.
         """
+        self.release_auxiliary_graphs()
         loaded: set[str] = set()
         lm_weights: list[tuple[str, torch.Tensor]] = []
         perception_state: dict[str, torch.Tensor] = {}
@@ -1171,15 +1190,6 @@ class NemotronVoiceChatThinkerForConditionalGeneration(nn.Module, HasInnerState,
         self._streaming_preprocessor.to(device=device, dtype=torch.float32).eval()
         self.embed_tokens.to(device=device, dtype=self._dtype)
         self.function_head.to(device=device, dtype=self._dtype)
-        streaming = self.perception.encoder.streaming_cfg
-        phases = (
-            (_streaming_cfg_at(streaming.chunk_size, 0) + _streaming_cfg_at(streaming.pre_encode_cache_size, 0), 0),
-            (
-                _streaming_cfg_at(streaming.chunk_size, 1) + _streaming_cfg_at(streaming.pre_encode_cache_size, 1),
-                int(streaming.drop_extra_pre_encoded),
-            ),
-        )
-        self._perception_graph = make_perception_graph(self.perception, self.vllm_config, phases)
         loaded |= {f"perception.{n}" for n in perception_state}
         logger.info(
             "NemotronVoiceChat thinker loaded: %d backbone tensors, %d perception tensors, "
