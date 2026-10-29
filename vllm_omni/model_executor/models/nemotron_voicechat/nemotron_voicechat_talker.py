@@ -448,7 +448,7 @@ class NemotronVoiceChatTalkerForConditionalGeneration(nn.Module):
     # Native-vLLM path (experimental; see __init__).
     # ------------------------------------------------------------------
     def _encode_cas_rows(self, ids: torch.Tensor, *, token_id: int | None = None) -> torch.Tensor:
-        """Batched CharAwareSubwordEncoder rows for timeline tokens ([n, H])."""
+        """Encode timeline rows ([n, H]); cached singleton rows are shared and read-only."""
         encoder = self.tts.tts_model.embed_subword
         width = ids.numel()
         key = None
